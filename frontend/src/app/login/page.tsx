@@ -28,59 +28,32 @@ export default function LoginPage() {
 
     return (
         <main className="login-page">
-            {/* Left Panel */}
-            <div className="login-left">
-                <div className="login-logo-wrap">
-                    <div className="login-logo">N</div>
-                    <div className="login-logo-text">
+            <div className="login-card-wrapper">
+                <div style={{ textAlign: 'center', marginBottom: 32 }}>
+                    <div className="login-logo centered">N</div>
+                    <div className="login-logo-text centered">
                         <h1>NVSU Fines System</h1>
                         <span>Nueva Vizcaya State University</span>
                     </div>
                 </div>
 
-                <p className="login-tagline">
-                    Manage Student <span>Fines</span> — Clear, Fast &amp; Organized.
-                </p>
-                <p className="login-sub">
-                    A centralized platform for tracking and managing student fines across all organizations — NCSSC, College Orgs, and Sub-Orgs.
-                </p>
-
-                <div style={{ marginTop: 48, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {[
-                        { icon: '🏫', title: 'Multi-Organization Support', desc: 'Admin, NCSSC, College Orgs & Sub-Orgs' },
-                        { icon: '🔒', title: 'Role-Based Access', desc: 'Every user sees only what they need' },
-                        { icon: '📊', title: 'Real-Time Tracking', desc: 'Instant fine status updates and reports' },
-                    ].map((f) => (
-                        <div key={f.title} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                            <span style={{ fontSize: 20 }}>{f.icon}</span>
-                            <div>
-                                <p style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>{f.title}</p>
-                                <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13 }}>{f.desc}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Right Panel — Login Card */}
-            <div className="login-right">
                 <div className="login-card">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 24 }}>
                         <div style={{
-                            width: 36, height: 36,
+                            width: 48, height: 48,
                             background: 'var(--color-primary-100)',
-                            borderRadius: 'var(--radius-md)',
+                            borderRadius: 'var(--radius-full)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             color: 'var(--color-primary)'
                         }}>
-                            <FiShield size={18} />
+                            <FiShield size={24} />
                         </div>
-                        <h2>Welcome Back</h2>
+                        <h2 style={{ textAlign: 'center' }}>Welcome Back</h2>
+                        <p style={{ textAlign: 'center', margin: 0 }}>Sign in to your account</p>
                     </div>
-                    <p>Sign in to your NVSU Fines System account</p>
 
                     {error && (
-                        <div className="alert alert-error" style={{ marginBottom: 8 }}>
+                        <div className="alert alert-error" style={{ marginBottom: 16 }}>
                             <FiAlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
                             <span>{error}</span>
                         </div>
@@ -136,14 +109,14 @@ export default function LoginPage() {
                             type="submit"
                             className="btn btn-primary w-full btn-lg"
                             disabled={loading}
-                            style={{ marginTop: 8 }}
+                            style={{ marginTop: 16 }}
                         >
                             {loading ? 'Signing in…' : 'Sign In'}
                         </button>
                     </form>
 
-                    <p className="text-muted text-sm text-center" style={{ marginTop: 20 }}>
-                        Contact your administrator if you need access.
+                    <p className="text-muted text-sm text-center" style={{ marginTop: 24 }}>
+                        Powered by NCSSC & University IT
                     </p>
                 </div>
             </div>

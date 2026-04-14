@@ -69,7 +69,7 @@ export default function StudentDashboard() {
             ) : (
                 <div className="stats-grid">
                     <div className="stat-card">
-                        <div className="stat-icon green"><FiDollarSign size={22} /></div>
+                        <div className="stat-icon green"><span style={{ fontSize: 22, fontWeight: 'bold' }}></span></div>
                         <div className="stat-info">
                             <p>Total Fines</p>
                             <h3>{fines.length}</h3>
@@ -93,7 +93,7 @@ export default function StudentDashboard() {
                     </div>
 
                     <div className="stat-card">
-                        <div className="stat-icon gold"><FiDollarSign size={22} /></div>
+                        <div className="stat-icon gold"><span style={{ fontSize: 22, fontWeight: 'bold' }}></span></div>
                         <div className="stat-info">
                             <p>Outstanding</p>
                             <h3>₱{unpaidAmount.toFixed(2)}</h3>
@@ -148,7 +148,7 @@ export default function StudentDashboard() {
                         </div>
                     ) : fines.length === 0 ? (
                         <div className="empty-state">
-                            <FiDollarSign />
+                            <span style={{ fontSize: 40, fontWeight: 'bold' }}></span>
                             <h4>No fines found</h4>
                             <p>You have no recorded fines.</p>
                         </div>

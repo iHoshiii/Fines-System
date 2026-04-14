@@ -74,7 +74,7 @@ export default function AdminDashboard() {
             ) : (
                 <div className="stats-grid">
                     <div className="stat-card">
-                        <div className="stat-icon green"><FiDollarSign size={22} /></div>
+                        <div className="stat-icon green"><span style={{ fontSize: 22, fontWeight: 'bold' }}></span></div>
                         <div className="stat-info">
                             <p>Total Fines</p>
                             <h3>{fines.length}</h3>
@@ -122,7 +122,7 @@ export default function AdminDashboard() {
                         </div>
                     ) : fines.length === 0 ? (
                         <div className="empty-state">
-                            <FiDollarSign />
+                            <span style={{ fontSize: 40, fontWeight: 'bold' }}></span>
                             <h4>No fines found</h4>
                             <p>No fines have been recorded yet.</p>
                         </div>

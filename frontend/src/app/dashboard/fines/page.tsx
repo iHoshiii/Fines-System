@@ -202,7 +202,7 @@ export default function FinesPage() {
                         </div>
                     ) : filteredFines.length === 0 ? (
                         <div className="empty-state">
-                            <FiDollarSign />
+                            <span style={{ fontSize: 40, fontWeight: 'bold' }}></span>
                             <h4>No fines found</h4>
                             <p>Try adjusting your search or filters.</p>
                         </div>
