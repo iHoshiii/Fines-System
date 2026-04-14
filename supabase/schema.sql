@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS fines (
 -- TRIGGERS: auto-update updated_at
 -- ============================================================
 
-CREATE OR REPLACE FUNCTION update_updated_at_column()
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = NOW();
@@ -47,22 +47,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER profiles_updated_at
-  BEFORE UPDATE ON profiles
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER profiles_updated_at
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE TRIGGER fines_updated_at
-  BEFORE UPDATE ON fines
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER fines_updated_at
+  BEFORE UPDATE ON public.fines
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- ============================================================
 -- TRIGGER: auto-create profile on new auth user
 -- ============================================================
 
-CREATE OR REPLACE FUNCTION handle_new_user()
+CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO profiles (id, full_name, role)
+  INSERT INTO public.profiles (id, full_name, role)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'full_name', 'New User'),
@@ -71,11 +71,20 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE TRIGGER on_auth_user_created
+CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ============================================================
+-- SECURE ROLE HELPER
+-- ============================================================
+CREATE OR REPLACE FUNCTION get_my_role()
+RETURNS TEXT AS $$
+  SELECT role FROM profiles WHERE id = auth.uid();
+$$ LANGUAGE sql SECURITY DEFINER;
+
 
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS)
@@ -85,99 +94,75 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 
--- PROFILES POLICIES
--- Users can view their own profile
-CREATE POLICY "profiles_select_own" ON profiles
-  FOR SELECT USING (auth.uid() = id);
+-- ----------------- PROFILES POLICIES -----------------
+DROP POLICY IF EXISTS "profiles_select_own" ON profiles;
+DROP POLICY IF EXISTS "profiles_select_managers" ON profiles;
+DROP POLICY IF EXISTS "profiles_select_all" ON profiles;
+DROP POLICY IF EXISTS "profiles_update_own" ON profiles;
+DROP POLICY IF EXISTS "profiles_update_admin" ON profiles;
+DROP POLICY IF EXISTS "profiles_insert_admin" ON profiles;
+DROP POLICY IF EXISTS "profiles_insert_self" ON profiles;
 
--- Managers can view all profiles
-CREATE POLICY "profiles_select_managers" ON profiles
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid()
-      AND p.role IN ('admin', 'ncssc', 'college_org', 'sub_org')
-    )
-  );
+-- Everyone can view profiles (Fixes infinite recursion bug)
+CREATE POLICY "profiles_select_all" ON profiles
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Users can update their own profile
 CREATE POLICY "profiles_update_own" ON profiles
   FOR UPDATE USING (auth.uid() = id);
 
--- Admins can update any profile
+-- Admins can update any profile (Uses security definer to avoid infinite loops)
 CREATE POLICY "profiles_update_admin" ON profiles
-  FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-  );
+  FOR UPDATE USING ( get_my_role() = 'admin' );
 
--- Admins can insert profiles
 CREATE POLICY "profiles_insert_admin" ON profiles
-  FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-  );
+  FOR INSERT WITH CHECK ( get_my_role() = 'admin' );
 
 -- New users can insert their own profile (on signup)
 CREATE POLICY "profiles_insert_self" ON profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
 
--- FINES POLICIES
--- Students can view their own fines
-CREATE POLICY "fines_select_student" ON fines
+-- ----------------- FINES POLICIES -----------------
+DROP POLICY IF EXISTS "fines_select_student" ON fines;
+DROP POLICY IF EXISTS "fines_select_policy" ON fines;
+DROP POLICY IF EXISTS "fines_insert_managers" ON fines;
+DROP POLICY IF EXISTS "fines_update_managers" ON fines;
+DROP POLICY IF EXISTS "fines_delete_managers" ON fines;
+
+-- Students can view their own fines, managers can view all
+CREATE POLICY "fines_select_policy" ON fines
   FOR SELECT USING (
-    auth.uid() = student_id OR
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid()
-      AND p.role IN ('admin', 'ncssc', 'college_org', 'sub_org')
-    )
+    auth.uid() = student_id OR get_my_role() IN ('admin', 'ncssc', 'college_org', 'sub_org')
   );
 
 -- Managers can insert fines
 CREATE POLICY "fines_insert_managers" ON fines
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid()
-      AND p.role IN ('admin', 'ncssc', 'college_org', 'sub_org')
-    )
-  );
+  FOR INSERT WITH CHECK ( get_my_role() IN ('admin', 'ncssc', 'college_org', 'sub_org') );
 
 -- Managers can update fines
 CREATE POLICY "fines_update_managers" ON fines
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid()
-      AND p.role IN ('admin', 'ncssc', 'college_org', 'sub_org')
-    )
-  );
+  FOR UPDATE USING ( get_my_role() IN ('admin', 'ncssc', 'college_org', 'sub_org') );
 
 -- Managers can delete fines
 CREATE POLICY "fines_delete_managers" ON fines
-  FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid()
-      AND p.role IN ('admin', 'ncssc', 'college_org', 'sub_org')
-    )
-  );
+  FOR DELETE USING ( get_my_role() IN ('admin', 'ncssc', 'college_org', 'sub_org') );
 
--- ORGANIZATIONS POLICIES
+-- ----------------- ORGANIZATIONS POLICIES -----------------
+DROP POLICY IF EXISTS "orgs_select_all" ON organizations;
+DROP POLICY IF EXISTS "orgs_manage_admin" ON organizations;
+
 -- Everyone authenticated can view organizations
 CREATE POLICY "orgs_select_all" ON organizations
   FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Admins can manage organizations
 CREATE POLICY "orgs_manage_admin" ON organizations
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-  );
+  FOR ALL USING ( get_my_role() = 'admin' );
 
 -- ============================================================
--- SAMPLE DATA (Optional — remove in production)
+-- SAMPLE DATA (Optional)
 -- ============================================================
 
--- Insert sample organizations
 INSERT INTO organizations (name, type) VALUES
   ('NCSSC - Student Council', 'ncssc'),
   ('CICS Student Council', 'college'),

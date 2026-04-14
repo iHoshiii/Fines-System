@@ -1,0 +1,6 @@
+Creating dummy accounts using Requests with options.data...
+Failed admin2@nvsu.edu.ph: {"code":500,"error_code":"unexpected_failure","msg":"Database error saving new user","error_id":"9ebfcb72509cb9f6-MNL"}
+Failed student2@nvsu.edu.ph: {"code":500,"error_code":"unexpected_failure","msg":"Database error saving new user","error_id":"9ebfcb7881c3bc52-MNL"}
+Failed ncssc2@nvsu.edu.ph: {"code":500,"error_code":"unexpected_failure","msg":"Database error saving new user","error_id":"9ebfcb7ce301bc55-MNL"}
+Failed college2@nvsu.edu.ph: {"code":500,"error_code":"unexpected_failure","msg":"Database error saving new user","error_id":"9ebfcb8106f1ba05-MNL"}
+Failed suborg2@nvsu.edu.ph: {"code":500,"error_code":"unexpected_failure","msg":"Database error saving new user","error_id":"9ebfcb850388b9f3-MNL"}
