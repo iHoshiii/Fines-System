@@ -4,7 +4,16 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Profile } from '@/types';
 import { useAuth } from '@/context/AuthContext';
-import { FiSearch, FiUsers, FiAlertCircle, FiPlus, FiX, FiSave } from 'react-icons/fi';
+import { FiSearch, FiUsers, FiAlertCircle, FiPlus, FiX, FiSave, FiEye } from 'react-icons/fi';
+import { format } from 'date-fns';
+
+interface StudentFine {
+    id: string;
+    description: string;
+    amount: number;
+    status: 'paid' | 'unpaid';
+    created_at: string;
+}
 
 export default function StudentsPage() {
     const { profile } = useAuth();
@@ -19,6 +28,9 @@ export default function StudentsPage() {
     const [savingFine, setSavingFine] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [showViewFinesModal, setShowViewFinesModal] = useState(false);
+    const [viewingFinesLoading, setViewingFinesLoading] = useState(false);
+    const [selectedStudentFines, setSelectedStudentFines] = useState<StudentFine[]>([]);
 
     useEffect(() => {
         fetchStudents();
@@ -113,6 +125,30 @@ export default function StudentsPage() {
         }
     };
 
+    const openViewFinesModal = async (student: Profile) => {
+        setSelectedStudent(student);
+        setSelectedStudentFines([]);
+        setViewingFinesLoading(true);
+        setError(null);
+        setShowViewFinesModal(true);
+
+        try {
+            const { data, error: finesError } = await supabase
+                .from('fines')
+                .select('id, description, amount, status, created_at')
+                .eq('student_id', student.id)
+                .order('created_at', { ascending: false });
+
+            if (finesError) throw finesError;
+            setSelectedStudentFines((data || []) as StudentFine[]);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Failed to load fines.';
+            setError(message);
+        } finally {
+            setViewingFinesLoading(false);
+        }
+    };
+
     return (
         <div>
             <div className="page-header">
@@ -197,12 +233,20 @@ export default function StudentsPage() {
                                                 )}
                                             </td>
                                             <td>
-                                                <button
-                                                    className="btn btn-sm btn-primary"
-                                                    onClick={() => openAddFineModal(s)}
-                                                >
-                                                    <FiPlus size={14} /> Add Fine
-                                                </button>
+                                                <div className="flex gap-xs">
+                                                    <button
+                                                        className="btn btn-sm btn-ghost"
+                                                        onClick={() => openViewFinesModal(s)}
+                                                    >
+                                                        <FiEye size={14} /> View
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-sm btn-primary"
+                                                        onClick={() => openAddFineModal(s)}
+                                                    >
+                                                        <FiPlus size={14} /> Add Fine
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -275,6 +319,64 @@ export default function StudentsPage() {
                                 <FiSave size={15} />
                                 {savingFine ? 'Saving…' : 'Add Fine'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showViewFinesModal && selectedStudent && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowViewFinesModal(false)}>
+                    <div className="modal">
+                        <div className="modal-header">
+                            <h3>Fine Status: {selectedStudent.full_name}</h3>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowViewFinesModal(false)}>
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <p className="text-sm text-muted" style={{ marginBottom: 12 }}>
+                                ID Number: {selectedStudent.student_id_number || '—'}
+                            </p>
+
+                            {viewingFinesLoading ? (
+                                <div style={{ textAlign: 'center', padding: 20 }}>Loading fines…</div>
+                            ) : selectedStudentFines.length === 0 ? (
+                                <div className="empty-state">
+                                    <FiAlertCircle />
+                                    <h4>No fines found</h4>
+                                    <p>This student does not have any fines yet.</p>
+                                </div>
+                            ) : (
+                                <div className="table-wrapper">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Description</th>
+                                                <th>Amount</th>
+                                                <th>Status</th>
+                                                <th>Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {selectedStudentFines.map(fine => (
+                                                <tr key={fine.id}>
+                                                    <td>{fine.description}</td>
+                                                    <td>₱{Number(fine.amount).toFixed(2)}</td>
+                                                    <td>
+                                                        <span className={`badge badge-${fine.status}`}>
+                                                            {fine.status === 'paid' ? '✓ Paid' : '✗ Unpaid'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-sm text-muted">{format(new Date(fine.created_at), 'MMM d, yyyy')}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowViewFinesModal(false)}>Close</button>
                         </div>
                     </div>
                 </div>
