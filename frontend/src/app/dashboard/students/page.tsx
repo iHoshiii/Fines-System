@@ -3,13 +3,22 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Profile } from '@/types';
-import { FiSearch, FiUsers, FiAlertCircle } from 'react-icons/fi';
+import { useAuth } from '@/context/AuthContext';
+import { FiSearch, FiUsers, FiAlertCircle, FiPlus, FiX, FiSave } from 'react-icons/fi';
 
 export default function StudentsPage() {
+    const { profile } = useAuth();
     const [students, setStudents] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [finesCounts, setFinesCounts] = useState<Record<string, { total: number; unpaid: number }>>({});
+    const [showAddFineModal, setShowAddFineModal] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
+    const [fineDescription, setFineDescription] = useState('');
+    const [fineAmount, setFineAmount] = useState(0);
+    const [savingFine, setSavingFine] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
 
     useEffect(() => {
         fetchStudents();
@@ -50,6 +59,60 @@ export default function StudentsPage() {
         s.student_id_number?.toLowerCase().includes(search.toLowerCase())
     );
 
+    const openAddFineModal = (student: Profile) => {
+        setSelectedStudent(student);
+        setFineDescription('');
+        setFineAmount(0);
+        setError(null);
+        setShowAddFineModal(true);
+    };
+
+    const handleSaveFine = async () => {
+        if (!profile?.id) {
+            setError('Unable to identify issuer. Please log in again.');
+            return;
+        }
+        if (!selectedStudent) {
+            setError('Please select a student.');
+            return;
+        }
+        if (!fineDescription.trim()) {
+            setError('Please enter a specific fine description.');
+            return;
+        }
+        if (fineAmount <= 0) {
+            setError('Please enter a valid fine amount.');
+            return;
+        }
+
+        setSavingFine(true);
+        setError(null);
+        try {
+            const { error: insertError } = await supabase
+                .from('fines')
+                .insert({
+                    student_id: selectedStudent.id,
+                    amount: fineAmount,
+                    description: fineDescription.trim(),
+                    status: 'unpaid',
+                    issued_by: profile.id,
+                });
+
+            if (insertError) throw insertError;
+
+            setSuccess(`Fine added for ${selectedStudent.full_name}.`);
+            setShowAddFineModal(false);
+            setSelectedStudent(null);
+            await fetchStudents();
+            setTimeout(() => setSuccess(null), 3000);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Failed to save fine.';
+            setError(message);
+        } finally {
+            setSavingFine(false);
+        }
+    };
+
     return (
         <div>
             <div className="page-header">
@@ -71,6 +134,12 @@ export default function StudentsPage() {
                     />
                 </div>
             </div>
+
+            {success && (
+                <div className="alert alert-success" style={{ marginBottom: 16 }}>
+                    {success}
+                </div>
+            )}
 
             <div className="table-container">
                 <div className="table-header">
@@ -94,6 +163,7 @@ export default function StudentsPage() {
                                     <th>ID Number</th>
                                     <th>Total Fines</th>
                                     <th>Status</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -126,6 +196,14 @@ export default function StudentsPage() {
                                                     <span className="badge badge-paid">✓ Clear</span>
                                                 )}
                                             </td>
+                                            <td>
+                                                <button
+                                                    className="btn btn-sm btn-primary"
+                                                    onClick={() => openAddFineModal(s)}
+                                                >
+                                                    <FiPlus size={14} /> Add Fine
+                                                </button>
+                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -134,6 +212,73 @@ export default function StudentsPage() {
                     )}
                 </div>
             </div>
+
+            {showAddFineModal && selectedStudent && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAddFineModal(false)}>
+                    <div className="modal">
+                        <div className="modal-header">
+                            <h3>Add Fine for Student</h3>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowAddFineModal(false)}>
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
+
+                            <div className="form-group">
+                                <label className="form-label">Student Name</label>
+                                <input
+                                    className="form-control"
+                                    value={selectedStudent.full_name}
+                                    disabled
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">ID Number</label>
+                                <input
+                                    className="form-control"
+                                    value={selectedStudent.student_id_number || 'No ID Number'}
+                                    disabled
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Fine Description *</label>
+                                <input
+                                    id="student-fine-description"
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Enter specific fine description"
+                                    value={fineDescription}
+                                    onChange={e => setFineDescription(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Fine Amount (₱) *</label>
+                                <input
+                                    id="student-fine-amount"
+                                    type="number"
+                                    min="1"
+                                    step="0.01"
+                                    className="form-control"
+                                    placeholder="0.00"
+                                    value={fineAmount || ''}
+                                    onChange={e => setFineAmount(parseFloat(e.target.value) || 0)}
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowAddFineModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleSaveFine} disabled={savingFine}>
+                                <FiSave size={15} />
+                                {savingFine ? 'Saving…' : 'Add Fine'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -6,9 +6,12 @@ import { supabase } from '@/lib/supabaseClient';
 import { Fine, Profile, FineFormData } from '@/types';
 import {
     FiPlus, FiEdit2, FiTrash2, FiSearch,
-    FiX, FiSave, FiDollarSign, FiAlertCircle, FiCheckCircle
+    FiX, FiSave, FiAlertCircle, FiCheckCircle
 } from 'react-icons/fi';
 import { format } from 'date-fns';
+
+const DESCRIPTION_STORAGE_KEY = 'fine_description_templates';
+const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
 
 export default function FinesPage() {
     const { profile } = useAuth();
@@ -20,7 +23,10 @@ export default function FinesPage() {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
     const [showModal, setShowModal] = useState(false);
+    const [showDescriptionModal, setShowDescriptionModal] = useState(false);
     const [editingFine, setEditingFine] = useState<Fine | null>(null);
+    const [descriptionOptions, setDescriptionOptions] = useState<string[]>([]);
+    const [newDescription, setNewDescription] = useState('');
     const [formData, setFormData] = useState<FineFormData>({
         student_id: '',
         amount: 0,
@@ -38,6 +44,25 @@ export default function FinesPage() {
         }
     }, [profile]);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const storedRaw = window.localStorage.getItem(DESCRIPTION_STORAGE_KEY);
+        if (!storedRaw) return;
+
+        try {
+            const parsed: unknown = JSON.parse(storedRaw);
+            if (Array.isArray(parsed)) {
+                const fromStorage = parsed
+                    .filter((item): item is string => typeof item === 'string')
+                    .map(item => item.trim())
+                    .filter(Boolean);
+                setDescriptionOptions(prev => Array.from(new Set([...prev, ...fromStorage])));
+            }
+        } catch {
+            window.localStorage.removeItem(DESCRIPTION_STORAGE_KEY);
+        }
+    }, []);
+
     const fetchFines = async () => {
         setLoading(true);
         try {
@@ -50,7 +75,12 @@ export default function FinesPage() {
 
             const { data, error } = await query;
             if (error) throw error;
-            setFines(data || []);
+            const fineData = data || [];
+            setFines(fineData);
+            const fromFines = fineData
+                .map(fine => fine.description?.trim())
+                .filter((item): item is string => Boolean(item));
+            setDescriptionOptions(prev => Array.from(new Set([...prev, ...fromFines])));
         } finally {
             setLoading(false);
         }
@@ -66,10 +96,20 @@ export default function FinesPage() {
     };
 
     const openAddModal = () => {
+        const defaultDescription =
+            typeof window !== 'undefined'
+                ? window.localStorage.getItem(LAST_DESCRIPTION_STORAGE_KEY) || ''
+                : '';
         setEditingFine(null);
-        setFormData({ student_id: '', amount: 0, description: '', status: 'unpaid' });
+        setFormData({ student_id: '', amount: 0, description: defaultDescription, status: 'unpaid' });
         setError(null);
         setShowModal(true);
+    };
+
+    const openAddDescriptionModal = () => {
+        setNewDescription('');
+        setError(null);
+        setShowDescriptionModal(true);
     };
 
     const openEditModal = (fine: Fine) => {
@@ -85,7 +125,7 @@ export default function FinesPage() {
     };
 
     const handleSave = async () => {
-        if (!formData.student_id || !formData.description || formData.amount <= 0) {
+        if (!formData.student_id || !formData.description.trim() || formData.amount <= 0) {
             setError('Please fill in all required fields with valid values.');
             return;
         }
@@ -98,7 +138,7 @@ export default function FinesPage() {
                     .update({
                         student_id: formData.student_id,
                         amount: formData.amount,
-                        description: formData.description,
+                        description: formData.description.trim(),
                         status: formData.status,
                     })
                     .eq('id', editingFine.id);
@@ -110,7 +150,7 @@ export default function FinesPage() {
                     .insert({
                         student_id: formData.student_id,
                         amount: formData.amount,
-                        description: formData.description,
+                        description: formData.description.trim(),
                         status: formData.status,
                         issued_by: profile!.id,
                     });
@@ -120,11 +160,39 @@ export default function FinesPage() {
             setShowModal(false);
             fetchFines();
             setTimeout(() => setSuccess(null), 3000);
-        } catch (err: any) {
-            setError(err.message || 'An error occurred.');
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'An error occurred.';
+            setError(message);
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleAddDescription = () => {
+        const trimmed = newDescription.trim();
+        if (!trimmed) {
+            setError('Description cannot be empty.');
+            return;
+        }
+
+        const exists = descriptionOptions.some(
+            option => option.toLowerCase() === trimmed.toLowerCase()
+        );
+        if (exists) {
+            setError('Description already exists in the list.');
+            return;
+        }
+
+        const updated = Array.from(new Set([...descriptionOptions, trimmed]));
+        setDescriptionOptions(updated);
+        setFormData(prev => ({ ...prev, description: trimmed }));
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem(DESCRIPTION_STORAGE_KEY, JSON.stringify(updated));
+            window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, trimmed);
+        }
+        setSuccess('Description added to list.');
+        setShowDescriptionModal(false);
+        setTimeout(() => setSuccess(null), 3000);
     };
 
     const handleDelete = async (id: string) => {
@@ -141,8 +209,8 @@ export default function FinesPage() {
         const matchStatus = statusFilter === 'all' || f.status === statusFilter;
         const matchSearch = search === '' ||
             f.description.toLowerCase().includes(search.toLowerCase()) ||
-            (f.student as any)?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-            (f.student as any)?.student_id_number?.toLowerCase().includes(search.toLowerCase());
+            f.student?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+            f.student?.student_id_number?.toLowerCase().includes(search.toLowerCase());
         return matchStatus && matchSearch;
     });
 
@@ -154,9 +222,14 @@ export default function FinesPage() {
                     <p>{isStudent ? 'View your fine account status.' : 'Add, edit, or update student fines.'}</p>
                 </div>
                 {!isStudent && (
-                    <button id="add-fine-btn" className="btn btn-primary" onClick={openAddModal}>
-                        <FiPlus size={16} /> Add Fine
-                    </button>
+                    <div className="flex gap-sm">
+                        <button id="add-fine-btn" className="btn btn-primary" onClick={openAddModal}>
+                            <FiPlus size={16} /> Add Fine
+                        </button>
+                        <button id="add-description-btn" className="btn btn-ghost" onClick={openAddDescriptionModal}>
+                            <FiPlus size={16} /> Add Description
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -225,8 +298,8 @@ export default function FinesPage() {
                                         {!isStudent && (
                                             <td>
                                                 <div>
-                                                    <p style={{ fontWeight: 600 }}>{(fine.student as any)?.full_name || '—'}</p>
-                                                    <p className="text-sm text-muted">{(fine.student as any)?.student_id_number}</p>
+                                                    <p style={{ fontWeight: 600 }}>{fine.student?.full_name || '—'}</p>
+                                                    <p className="text-sm text-muted">{fine.student?.student_id_number}</p>
                                                 </div>
                                             </td>
                                         )}
@@ -243,7 +316,7 @@ export default function FinesPage() {
                                             {format(new Date(fine.created_at), 'MMM d, yyyy')}
                                         </td>
                                         {!isStudent && (
-                                            <td className="text-sm text-muted">{(fine.issuer as any)?.full_name || '—'}</td>
+                                            <td className="text-sm text-muted">{fine.issuer?.full_name || '—'}</td>
                                         )}
                                         {!isStudent && (
                                             <td>
@@ -309,14 +382,25 @@ export default function FinesPage() {
 
                             <div className="form-group">
                                 <label className="form-label">Description *</label>
-                                <input
-                                    id="fine-description"
-                                    type="text"
+                                <select
+                                    id="fine-description-list"
                                     className="form-control"
-                                    placeholder="e.g. Late submission, Uniform violation"
                                     value={formData.description}
-                                    onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
-                                />
+                                    onChange={e => {
+                                        const value = e.target.value;
+                                        setFormData(p => ({ ...p, description: value }));
+                                        if (value && typeof window !== 'undefined') {
+                                            window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, value);
+                                        }
+                                    }}
+                                >
+                                    <option value="">Select description from list…</option>
+                                    {descriptionOptions.map(option => (
+                                        <option key={option} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div className="form-grid">
@@ -358,6 +442,43 @@ export default function FinesPage() {
                             >
                                 <FiSave size={15} />
                                 {saving ? 'Saving…' : editingFine ? 'Update Fine' : 'Add Fine'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showDescriptionModal && !isStudent && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowDescriptionModal(false)}>
+                    <div className="modal">
+                        <div className="modal-header">
+                            <h3>Add Fine Description</h3>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowDescriptionModal(false)}>
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            {error && (
+                                <div className="alert alert-error">
+                                    <FiAlertCircle size={16} /> {error}
+                                </div>
+                            )}
+                            <div className="form-group">
+                                <label className="form-label">Description *</label>
+                                <input
+                                    id="new-fine-description"
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="e.g. Late submission"
+                                    value={newDescription}
+                                    onChange={e => setNewDescription(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowDescriptionModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleAddDescription}>
+                                <FiSave size={15} /> Save Description
                             </button>
                         </div>
                     </div>
