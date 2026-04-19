@@ -1,33 +1,21 @@
-==================================================
-NVSU Fines System - Dummy Accounts
-==================================================
-
-Wait until you approve the pending Python script in your terminal to create these!
 All users have the same password: password123
 
 1. Administrator (System Admin)
    Email: admin2@nvsu.edu.ph
-   Role: admin
 
 2. NCSSC Representative
    Email: ncssc2@nvsu.edu.ph
-   Role: ncssc
 
 3. College Organization
    Email: college2@nvsu.edu.ph
-   Role: college_org
 
 4. Sub-Organization
    Email: suborg2@nvsu.edu.ph
-   Role: sub_org
 
 5. Regular Student
    Email: student2@nvsu.edu.ph
-   Role: student
 
---------------------------------------------------
 NOTE: If you try to log in and get an "Invalid Login Credentials" error despite correct password, it means Supabase is waiting for Email Confirmation. To fix this:
 1. Go to your Supabase Dashboard
 2. Go to Authentication -> Providers -> Email
 3. Toggle "Confirm email" to OFF.
---------------------------------------------------
