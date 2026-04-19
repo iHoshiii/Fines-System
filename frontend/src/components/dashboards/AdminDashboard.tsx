@@ -59,7 +59,7 @@ export default function AdminDashboard() {
         return acc;
     }, {} as Record<string, any>);
 
-    const displayFines.length === 0 ? [] : Object.values(groupedFines);
+    const displayFines = Object.values(groupedFines);
 
     const unpaidFines = fines.filter(f => f.status === 'unpaid');
     const paidFines = fines.filter(f => f.status === 'paid');
