@@ -256,7 +256,7 @@ export default function SubOrgDashboard() {
                                             }
                                         }}
                                     >
-                                        <option value="">-- Select a template --</option>
+                                        <option value="" disabled>Select Event</option>
                                         {descriptionOptions.map(opt => (
                                             <option key={opt} value={opt}>{opt}</option>
                                         ))}

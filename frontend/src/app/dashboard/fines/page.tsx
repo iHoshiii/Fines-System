@@ -266,7 +266,7 @@ export default function FinesPage() {
                                     value={formData.student_id}
                                     onChange={e => setFormData(p => ({ ...p, student_id: e.target.value }))}
                                 >
-                                    <option value="">Select a student...</option>
+                                    <option value="" disabled>Select Student</option>
                                     {students.map(s => (
                                         <option key={s.id} value={s.id}>{s.full_name}</option>
                                     ))}
@@ -301,7 +301,7 @@ export default function FinesPage() {
                                             }
                                         }}
                                     >
-                                        <option value="">Select Event</option>
+                                        <option value="" disabled>Select Event</option>
                                         {descriptionOptions.map(opt => (
                                             <option key={opt} value={opt}>{opt}</option>
                                         ))}

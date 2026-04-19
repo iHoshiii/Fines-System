@@ -296,7 +296,7 @@ export default function NCSSCDashboard() {
                                             }
                                         }}
                                     >
-                                        <option value="">-- Select a template --</option>
+                                        <option value="" disabled>Select Event</option>
                                         {descriptionOptions.map((opt: string) => (
                                             <option key={opt} value={opt}>{opt}</option>
                                         ))}
