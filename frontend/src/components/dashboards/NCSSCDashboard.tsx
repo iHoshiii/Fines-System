@@ -48,7 +48,7 @@ export default function NCSSCDashboard() {
                 student: fine.student,
                 totalAmount: 0,
                 count: 0,
-                status: 'paid' as 'paid' | 'unpaid',
+                status: 'paid',
                 lastDate: fine.created_at,
                 description: fine.description
             };
@@ -140,7 +140,7 @@ export default function NCSSCDashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {displayFines.map((summary) => (
+                                {displayFines.map((summary: any) => (
                                     <tr key={summary.id}>
                                         <td>
                                             <div>
@@ -181,7 +181,7 @@ export default function NCSSCDashboard() {
                 </div>
             </div>
 
-            {/* View Modal */}
+            {/* Modal Components */}
             {showModal && selectedStudent && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
@@ -216,7 +216,6 @@ export default function NCSSCDashboard() {
                 </div>
             )}
 
-            {/* Add Modal */}
             {showAddModal && selectedStudent && (
                 <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>

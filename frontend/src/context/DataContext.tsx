@@ -13,6 +13,7 @@ interface DataContextType {
     loading: boolean;
     refreshFines: () => Promise<void>;
     refreshStudents: () => Promise<void>;
+    lastUpdated: number | null;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -25,9 +26,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [totalStudents, setTotalStudents] = useState(0);
     const [descriptionOptions, setDescriptionOptions] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
+    const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
-    const fetchFines = useCallback(async () => {
+    const fetchFines = useCallback(async (force = false) => {
         if (!profile) return;
+
+        const now = Date.now();
+        if (!force && lastUpdated && now - lastUpdated < 60000 && allFines.length > 0) {
+            return;
+        }
+
         try {
             const { data } = await supabase
                 .from('fines')
@@ -36,6 +44,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
             const list = data || [];
             setAllFines(list);
+            setLastUpdated(Date.now());
 
             // Sync description options
             const descs = list.map(f => f.description).filter(Boolean);
@@ -53,10 +62,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
             console.error('Error fetching fines:', error);
         }
-    }, [profile]);
+    }, [profile, lastUpdated, allFines.length]);
 
     const fetchStudents = useCallback(async () => {
         if (!profile) return;
+        if (students.length > 0) return;
+
         try {
             const { data, count } = await supabase
                 .from('profiles')
@@ -68,10 +79,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
             console.error('Error fetching students:', error);
         }
-    }, [profile]);
+    }, [profile, students.length]);
 
-    const refreshFines = async () => { await fetchFines(); };
-    const refreshStudents = async () => { await fetchStudents(); };
+    const refreshFines = async () => { await fetchFines(true); };
+    const refreshStudents = async () => { setStudents([]); await fetchStudents(); };
 
     useEffect(() => {
         if (profile) {
@@ -81,22 +92,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             setAllFines([]);
             setStudents([]);
             setLoading(false);
+            setLastUpdated(null);
         }
     }, [profile, fetchFines, fetchStudents]);
 
-    // Apply strict filtering based on user request
+    // Apply strict filtering
     const filteredFines = allFines.filter(f => {
         if (!profile) return false;
         if (profile.role === 'admin') return true;
 
-        // If organization is set up, filter by it
         if (profile.organization_id && (f.issuer as any)?.organization_id) {
             return (f.issuer as any).organization_id === profile.organization_id;
         }
 
-        // FALLBACK: If no organization info exists for the account, 
-        // strictly show only fines issued by THIS specific account.
-        // This prevents different orgs with null IDs from seeing each other's fines.
         return f.issued_by === profile.id;
     });
 
@@ -108,7 +116,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             descriptionOptions,
             loading,
             refreshFines,
-            refreshStudents
+            refreshStudents,
+            lastUpdated
         }}>
             {children}
         </DataContext.Provider>
