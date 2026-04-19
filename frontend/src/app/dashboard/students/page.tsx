@@ -25,10 +25,6 @@ export default function StudentsPage() {
     const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
 
     const finesCounts = (allFines || []).reduce((acc: Record<string, { total: number; unpaid: number }>, f: any) => {
-        const issuerOrg = f.issuer?.organization_id;
-        if (profile?.role !== 'admin' && issuerOrg !== profile?.organization_id) {
-            return acc;
-        }
         const sid = f.student_id;
         if (!acc[sid]) acc[sid] = { total: 0, unpaid: 0 };
         acc[sid].total++;
@@ -66,11 +62,7 @@ export default function StudentsPage() {
         }
     };
 
-    const studentFines = (allFines || []).filter(f => {
-        const matchesStudent = f.student_id === selectedStudent?.id;
-        const matchesOrg = profile?.role === 'admin' || (f.issuer as any)?.organization_id === profile?.organization_id;
-        return matchesStudent && matchesOrg;
-    });
+    const studentFines = (allFines || []).filter(f => f.student_id === selectedStudent?.id);
 
     return (
         <div>

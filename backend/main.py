@@ -92,13 +92,16 @@ def read_root():
 
 @app.get("/fines", tags=["Fines"])
 def list_fines(profile=Depends(get_profile)):
-    """List fines. Students see only their own; managers see all."""
+    """List fines. Students see only their own; managers see their issued ones; admin sees all."""
     query = supabase.table("fines").select(
         "*, student:profiles!student_id(id, full_name, student_id_number), issuer:profiles!issued_by(full_name)"
     ).order("created_at", desc=True)
 
     if profile["role"] == "student":
         query = query.eq("student_id", profile["id"])
+    elif profile["role"] != "admin":
+        # Managers (ncssc, college_org, sub_org) see only fines they issued
+        query = query.eq("issued_by", profile["id"])
 
     resp = query.execute()
     return resp.data or []
@@ -192,7 +195,12 @@ def update_user(user_id: str, data: ProfileUpdate, profile=Depends(require_manag
 
 @app.get("/reports/summary", tags=["Reports"])
 def get_summary(profile=Depends(require_manager)):
-    fines_resp = supabase.table("fines").select("amount, status, student_id").execute()
+    query = supabase.table("fines").select("amount, status, student_id, issued_by")
+    
+    if profile["role"] != "admin":
+        query = query.eq("issued_by", profile["id"])
+        
+    fines_resp = query.execute()
     fines = fines_resp.data or []
 
     total = len(fines)

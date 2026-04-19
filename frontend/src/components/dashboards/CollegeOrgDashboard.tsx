@@ -19,10 +19,8 @@ export default function CollegeOrgDashboard() {
 
     const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
 
-    // Filters fines by organization (unless admin)
-    const fines = profile?.role === 'admin'
-        ? (allFines || [])
-        : (allFines || []).filter(f => (f.issuer as any)?.organization_id === profile?.organization_id);
+    // Use fines from DataContext directly (already filtered)
+    const fines = allFines || [];
 
     const handleSaveFine = async () => {
         if (!selectedStudent || !fineDescription.trim() || fineAmount <= 0) return;

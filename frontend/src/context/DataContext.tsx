@@ -37,10 +37,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
 
         try {
-            const { data } = await supabase
+            let query = supabase
                 .from('fines')
                 .select('*, student:profiles!student_id(full_name, student_id_number), issuer:profiles!issued_by(full_name, organization_id)')
                 .order('created_at', { ascending: false });
+
+            if (profile.role === 'student') {
+                query = query.eq('student_id', profile.id);
+            } else if (profile.role !== 'admin') {
+                query = query.eq('issued_by', profile.id);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
 
             const list = data || [];
             setFines(list);
