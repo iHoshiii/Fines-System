@@ -106,6 +106,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (profile) {
             setLoading(true);
+            setFines([]); // Clear existing data on profile change
+            setLastUpdated(null); // Reset cache timer
             Promise.all([fetchFines(), fetchStudents()]).finally(() => {
                 setLoading(false);
             });

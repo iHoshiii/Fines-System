@@ -198,14 +198,18 @@ export default function FinesPage() {
                                         </td>
                                         {!isStudent && (
                                             <td>
-                                                <div className="flex gap-xs">
-                                                    <button className="btn btn-icon btn-ghost" onClick={() => openEditModal(f)}>
-                                                        <FiEdit2 size={14} />
-                                                    </button>
-                                                    <button className="btn btn-icon btn-danger" onClick={() => handleDelete(f.id)}>
-                                                        <FiTrash2 size={14} />
-                                                    </button>
-                                                </div>
+                                                {(profile?.role === 'admin' || f.issued_by === profile?.id) ? (
+                                                    <div className="flex gap-xs">
+                                                        <button className="btn btn-icon btn-ghost" onClick={() => openEditModal(f)}>
+                                                            <FiEdit2 size={14} />
+                                                        </button>
+                                                        <button className="btn btn-icon btn-danger" onClick={() => handleDelete(f.id)}>
+                                                            <FiTrash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-muted">View Only</span>
+                                                )}
                                             </td>
                                         )}
                                     </tr>
