@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { Fine } from '@/types';
-import { FiDollarSign, FiCheckCircle, FiAlertCircle, FiUsers, FiEye, FiX } from 'react-icons/fi';
+import { FiDollarSign, FiCheckCircle, FiAlertCircle, FiUsers, FiEye, FiX, FiPlus } from 'react-icons/fi';
 import { format } from 'date-fns';
 
 export default function AdminDashboard() {
@@ -14,16 +14,41 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [showModal, setShowModal] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [descriptionOptions, setDescriptionOptions] = useState<string[]>([]);
+    const [fineDescription, setFineDescription] = useState('');
+    const [fineAmount, setFineAmount] = useState(0);
+    const [saving, setSaving] = useState(false);
+
+    const DESCRIPTION_STORAGE_KEY = 'fine_description_templates';
+    const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
 
     useEffect(() => {
         if (!profile) return;
         fetchData();
+        loadDescriptionOptions();
     }, [profile]);
+
+    const loadDescriptionOptions = async () => {
+        if (typeof window !== 'undefined') {
+            const stored = window.localStorage.getItem(DESCRIPTION_STORAGE_KEY);
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed)) setDescriptionOptions(parsed);
+                } catch (e) { }
+            }
+        }
+        const { data } = await supabase.from('fines').select('description').order('created_at', { ascending: false }).limit(100);
+        if (data) {
+            const descs = data.map(f => f.description).filter(Boolean);
+            setDescriptionOptions(prev => Array.from(new Set([...prev, ...descs])));
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Admin sees all system fines
             const { data } = await supabase
                 .from('fines')
                 .select('*, student:profiles!student_id(full_name, student_id_number), issuer:profiles!issued_by(full_name, organization_id)')
@@ -41,7 +66,27 @@ export default function AdminDashboard() {
         }
     };
 
-    // Group fines by student for the summary table
+    const handleSaveFine = async () => {
+        if (!selectedStudent || !fineDescription || fineAmount <= 0) return;
+        setSaving(true);
+        try {
+            const { error } = await supabase.from('fines').insert({
+                student_id: selectedStudent.id,
+                amount: fineAmount,
+                description: fineDescription,
+                status: 'unpaid',
+                issued_by: profile!.id
+            });
+            if (error) throw error;
+            setShowAddModal(false);
+            fetchData();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const groupedFines = fines.reduce((acc, fine) => {
         const studentId = fine.student_id;
         if (!acc[studentId]) {
@@ -55,14 +100,9 @@ export default function AdminDashboard() {
                 description: fine.description
             };
         }
-
         acc[studentId].totalAmount += Number(fine.amount);
         acc[studentId].count += 1;
-
-        if (fine.status === 'unpaid') {
-            acc[studentId].status = 'unpaid';
-        }
-
+        if (fine.status === 'unpaid') acc[studentId].status = 'unpaid';
         return acc;
     }, {} as Record<string, any>);
 
@@ -80,15 +120,13 @@ export default function AdminDashboard() {
 
     return (
         <div>
-            {/* Page Header */}
             <div className="page-header">
                 <div className="page-header-left">
                     <h2>{greetingTime()}, {profile?.full_name?.split(' ')[0] || 'Admin'} 👋</h2>
-                    <p>Welcome to the System Admin Dashboard. Comprehensive overview of all fines.</p>
+                    <p>Welcome to the System Admin Dashboard. Overview of all fines.</p>
                 </div>
             </div>
 
-            {/* Stats Cards */}
             {loading ? (
                 <div className="stats-grid">
                     {[1, 2, 3, 4].map(i => (
@@ -104,13 +142,12 @@ export default function AdminDashboard() {
             ) : (
                 <div className="stats-grid">
                     <div className="stat-card">
-                        <div className="stat-icon green"><span style={{ fontSize: 22, fontWeight: 'bold' }}></span></div>
+                        <div className="stat-icon green"></div>
                         <div className="stat-info">
                             <p>Total System Fines</p>
                             <h3>{fines.length}</h3>
                         </div>
                     </div>
-
                     <div className="stat-card">
                         <div className="stat-icon red"><FiAlertCircle size={22} /></div>
                         <div className="stat-info">
@@ -118,7 +155,6 @@ export default function AdminDashboard() {
                             <h3>{unpaidFines.length}</h3>
                         </div>
                     </div>
-
                     <div className="stat-card">
                         <div className="stat-icon green"><FiCheckCircle size={22} /></div>
                         <div className="stat-info">
@@ -126,7 +162,6 @@ export default function AdminDashboard() {
                             <h3>{paidFines.length}</h3>
                         </div>
                     </div>
-
                     <div className="stat-card">
                         <div className="stat-icon blue"><FiUsers size={22} /></div>
                         <div className="stat-info">
@@ -137,24 +172,17 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* Student Fines Summary Table */}
             <div className="table-container" style={{ marginTop: 24 }}>
                 <div className="table-header">
                     <span className="table-title">Student Fines Summary</span>
-                    <span className="text-sm text-muted">All system fines grouped by student</span>
+                    <span className="text-sm text-muted">Total sum per student (All Orgs)</span>
                 </div>
                 <div className="table-wrapper">
                     {loading ? (
-                        <div style={{ padding: 32, textAlign: 'center' }}>
-                            <div className="animate-pulse" style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>
-                                Loading fines…
-                            </div>
-                        </div>
+                        <div style={{ padding: 32, textAlign: 'center' }}>Loading...</div>
                     ) : displayFines.length === 0 ? (
                         <div className="empty-state">
-                            <span style={{ fontSize: 40, fontWeight: 'bold' }}></span>
                             <h4>No fines found</h4>
-                            <p>No fines have been recorded yet.</p>
                         </div>
                     ) : (
                         <table>
@@ -192,12 +220,26 @@ export default function AdminDashboard() {
                                             {format(new Date(summary.lastDate), 'MMM d, yyyy')}
                                         </td>
                                         <td>
-                                            <button
-                                                className="btn btn-sm btn-ghost"
-                                                onClick={() => { setSelectedStudent(summary); setShowModal(true); }}
-                                            >
-                                                <FiEye size={14} /> View
-                                            </button>
+                                            <div className="flex gap-xs">
+                                                <button
+                                                    className="btn btn-sm btn-ghost"
+                                                    onClick={() => { setSelectedStudent(summary); setShowModal(true); }}
+                                                >
+                                                    <FiEye size={14} /> View
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm btn-primary"
+                                                    onClick={() => {
+                                                        setSelectedStudent(summary);
+                                                        const last = typeof window !== 'undefined' ? window.localStorage.getItem(LAST_DESCRIPTION_STORAGE_KEY) || '' : '';
+                                                        setFineDescription(last);
+                                                        setFineAmount(0);
+                                                        setShowAddModal(true);
+                                                    }}
+                                                >
+                                                    <FiPlus size={14} /> Fine
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -206,7 +248,7 @@ export default function AdminDashboard() {
                     )}
                 </div>
 
-                {/* View Fines Modal */}
+                {/* Details Modal */}
                 {showModal && selectedStudent && (
                     <div className="modal-overlay" onClick={() => setShowModal(false)}>
                         <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
@@ -215,9 +257,7 @@ export default function AdminDashboard() {
                                     <h3>{selectedStudent.student?.full_name}'s Fines</h3>
                                     <p className="text-sm text-muted">{selectedStudent.student?.student_id_number}</p>
                                 </div>
-                                <button className="btn btn-icon btn-ghost" onClick={() => setShowModal(false)}>
-                                    <FiX size={18} />
-                                </button>
+                                <button className="btn btn-icon btn-ghost" onClick={() => setShowModal(false)}><FiX size={18} /></button>
                             </div>
                             <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
                                 <div className="flex-col gap-sm">
@@ -235,22 +275,60 @@ export default function AdminDashboard() {
                                                     <p style={{ fontWeight: 700, color: fine.status === 'unpaid' ? 'var(--color-danger)' : 'var(--color-success)' }}>
                                                         ₱{Number(fine.amount).toFixed(2)}
                                                     </p>
-                                                    <span className={`badge badge-${fine.status}`} style={{ fontSize: 10 }}>
-                                                        {fine.status.toUpperCase()}
-                                                    </span>
+                                                    <span className={`badge badge-${fine.status}`} style={{ fontSize: 10 }}>{fine.status.toUpperCase()}</span>
                                                 </div>
                                             </div>
                                         ))}
                                 </div>
                             </div>
-                            <div className="modal-footer flex-between">
-                                <div>
-                                    <p className="text-xs text-muted">Total Balance</p>
-                                    <h4 style={{ color: selectedStudent.status === 'unpaid' ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                                        ₱{Number(selectedStudent.totalAmount).toFixed(2)}
-                                    </h4>
-                                </div>
+                            <div className="modal-footer">
                                 <button className="btn btn-primary" onClick={() => setShowModal(false)}>Close</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Add Fine Modal */}
+                {showAddModal && selectedStudent && (
+                    <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+                        <div className="modal" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>Add Fine: {selectedStudent.student?.full_name}</h3>
+                                <button className="btn btn-icon btn-ghost" onClick={() => setShowAddModal(false)}><FiX size={18} /></button>
+                            </div>
+                            <div className="modal-body">
+                                <div className="form-group">
+                                    <label className="form-label">Description</label>
+                                    <select
+                                        className="form-control"
+                                        value={fineDescription}
+                                        onChange={e => {
+                                            setFineDescription(e.target.value);
+                                            if (e.target.value && typeof window !== 'undefined') {
+                                                window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
+                                            }
+                                        }}
+                                    >
+                                        <option value="">Select description…</option>
+                                        {descriptionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Amount (₱)</label>
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        value={fineAmount || ''}
+                                        onChange={e => setFineAmount(parseFloat(e.target.value) || 0)}
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn btn-ghost" onClick={() => setShowAddModal(false)}>Cancel</button>
+                                <button className="btn btn-primary" onClick={handleSaveFine} disabled={saving}>
+                                    {saving ? 'Saving…' : 'Add Fine'}
+                                </button>
                             </div>
                         </div>
                     </div>

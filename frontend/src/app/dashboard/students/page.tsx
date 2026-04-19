@@ -7,6 +7,9 @@ import { useAuth } from '@/context/AuthContext';
 import { FiSearch, FiUsers, FiAlertCircle, FiPlus, FiX, FiSave, FiEye } from 'react-icons/fi';
 import { format } from 'date-fns';
 
+const DESCRIPTION_STORAGE_KEY = 'fine_description_templates';
+const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
+
 interface StudentFine {
     id: string;
     description: string;
@@ -31,31 +34,68 @@ export default function StudentsPage() {
     const [showViewFinesModal, setShowViewFinesModal] = useState(false);
     const [viewingFinesLoading, setViewingFinesLoading] = useState(false);
     const [selectedStudentFines, setSelectedStudentFines] = useState<StudentFine[]>([]);
+    const [descriptionOptions, setDescriptionOptions] = useState<string[]>([]);
 
     useEffect(() => {
         fetchStudents();
+        loadDescriptionOptions();
     }, []);
+
+    const loadDescriptionOptions = async () => {
+        // Load from localStorage
+        if (typeof window !== 'undefined') {
+            const stored = window.localStorage.getItem(DESCRIPTION_STORAGE_KEY);
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed)) {
+                        setDescriptionOptions(parsed);
+                    }
+                } catch (e) { }
+            }
+        }
+
+        // Fetch from database to ensure list is populated
+        const { data } = await supabase
+            .from('fines')
+            .select('description')
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        if (data) {
+            const fromDb = data.map(f => f.description).filter(Boolean);
+            setDescriptionOptions(prev => Array.from(new Set([...prev, ...fromDb])));
+        }
+    };
 
     const fetchStudents = async () => {
         setLoading(true);
-        const { data } = await supabase
+        const { data: studentsData } = await supabase
             .from('profiles')
             .select('*, organization:organizations(name)')
             .eq('role', 'student')
             .order('full_name');
-        const list = data || [];
+
+        const list = studentsData || [];
         setStudents(list);
 
-        // Fetch fine counts per student
+        // Fetch fine counts per student, filtered by the current user's organization
         if (list.length > 0) {
             const ids = list.map(s => s.id);
-            const { data: finesData } = await supabase
+            let query = supabase
                 .from('fines')
-                .select('student_id, status')
+                .select('student_id, status, issuer:profiles!issued_by(organization_id)')
                 .in('student_id', ids);
 
+            const { data: finesData } = await query;
+
+            // Filter fines by organization (unless admin)
+            const filteredFines = profile?.role === 'admin'
+                ? (finesData || [])
+                : (finesData || []).filter(f => (f.issuer as any)?.organization_id === profile?.organization_id);
+
             const counts: Record<string, { total: number; unpaid: number }> = {};
-            (finesData || []).forEach(f => {
+            filteredFines.forEach(f => {
                 if (!counts[f.student_id]) counts[f.student_id] = { total: 0, unpaid: 0 };
                 counts[f.student_id].total++;
                 if (f.status === 'unpaid') counts[f.student_id].unpaid++;
@@ -72,8 +112,9 @@ export default function StudentsPage() {
     );
 
     const openAddFineModal = (student: Profile) => {
+        const lastDesc = typeof window !== 'undefined' ? window.localStorage.getItem(LAST_DESCRIPTION_STORAGE_KEY) || '' : '';
         setSelectedStudent(student);
-        setFineDescription('');
+        setFineDescription(lastDesc);
         setFineAmount(0);
         setError(null);
         setShowAddFineModal(true);
@@ -135,12 +176,18 @@ export default function StudentsPage() {
         try {
             const { data, error: finesError } = await supabase
                 .from('fines')
-                .select('id, description, amount, status, created_at')
+                .select('id, description, amount, status, created_at, issuer:profiles!issued_by(organization_id, full_name)')
                 .eq('student_id', student.id)
                 .order('created_at', { ascending: false });
 
             if (finesError) throw finesError;
-            setSelectedStudentFines((data || []) as StudentFine[]);
+
+            // Filter fines by organization (unless admin)
+            const filteredFines = profile?.role === 'admin'
+                ? (data || [])
+                : (data || []).filter(f => (f.issuer as any)?.organization_id === profile?.organization_id);
+
+            setSelectedStudentFines(filteredFines as any[]);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Failed to load fines.';
             setError(message);
@@ -289,14 +336,25 @@ export default function StudentsPage() {
 
                             <div className="form-group">
                                 <label className="form-label">Fine Description *</label>
-                                <input
+                                <select
                                     id="student-fine-description"
-                                    type="text"
                                     className="form-control"
-                                    placeholder="Enter specific fine description"
                                     value={fineDescription}
-                                    onChange={e => setFineDescription(e.target.value)}
-                                />
+                                    onChange={e => {
+                                        setFineDescription(e.target.value);
+                                        if (e.target.value && typeof window !== 'undefined') {
+                                            window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
+                                        }
+                                    }}
+                                >
+                                    <option value="">Select description…</option>
+                                    {descriptionOptions.map(option => (
+                                        <option key={option} value={option}>{option}</option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-muted" style={{ marginTop: 4 }}>
+                                    Don't see the description? Add it in the <a href="/dashboard/fines" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Fines List</a>.
+                                </p>
                             </div>
 
                             <div className="form-group">

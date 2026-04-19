@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { Fine } from '@/types';
-import { FiDollarSign, FiCheckCircle, FiAlertCircle, FiUsers, FiEye, FiX } from 'react-icons/fi';
+import { FiDollarSign, FiCheckCircle, FiAlertCircle, FiUsers, FiEye, FiX, FiPlus } from 'react-icons/fi';
 import { format } from 'date-fns';
 
 export default function NCSSCDashboard() {
@@ -14,11 +14,38 @@ export default function NCSSCDashboard() {
     const [loading, setLoading] = useState(true);
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [showModal, setShowModal] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [descriptionOptions, setDescriptionOptions] = useState<string[]>([]);
+    const [fineDescription, setFineDescription] = useState('');
+    const [fineAmount, setFineAmount] = useState(0);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const DESCRIPTION_STORAGE_KEY = 'fine_description_templates';
+    const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
 
     useEffect(() => {
         if (!profile) return;
         fetchData();
+        loadDescriptionOptions();
     }, [profile]);
+
+    const loadDescriptionOptions = async () => {
+        if (typeof window !== 'undefined') {
+            const stored = window.localStorage.getItem(DESCRIPTION_STORAGE_KEY);
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed)) setDescriptionOptions(parsed);
+                } catch (e) { }
+            }
+        }
+        const { data } = await supabase.from('fines').select('description').order('created_at', { ascending: false }).limit(100);
+        if (data) {
+            const descs = data.map(f => f.description).filter(Boolean);
+            setDescriptionOptions(prev => Array.from(new Set([...prev, ...descs])));
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -44,6 +71,27 @@ export default function NCSSCDashboard() {
             setTotalStudents(count || 0);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSaveFine = async () => {
+        if (!selectedStudent || !fineDescription || fineAmount <= 0) return;
+        setSaving(true);
+        try {
+            const { error } = await supabase.from('fines').insert({
+                student_id: selectedStudent.id,
+                amount: fineAmount,
+                description: fineDescription,
+                status: 'unpaid',
+                issued_by: profile!.id
+            });
+            if (error) throw error;
+            setShowAddModal(false);
+            fetchData();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -198,12 +246,26 @@ export default function NCSSCDashboard() {
                                             {format(new Date(summary.lastDate), 'MMM d, yyyy')}
                                         </td>
                                         <td>
-                                            <button
-                                                className="btn btn-sm btn-ghost"
-                                                onClick={() => { setSelectedStudent(summary); setShowModal(true); }}
-                                            >
-                                                <FiEye size={14} /> View
-                                            </button>
+                                            <div className="flex gap-xs">
+                                                <button
+                                                    className="btn btn-sm btn-ghost"
+                                                    onClick={() => { setSelectedStudent(summary); setShowModal(true); }}
+                                                >
+                                                    <FiEye size={14} /> View
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm btn-primary"
+                                                    onClick={() => {
+                                                        setSelectedStudent(summary);
+                                                        const last = typeof window !== 'undefined' ? window.localStorage.getItem(LAST_DESCRIPTION_STORAGE_KEY) || '' : '';
+                                                        setFineDescription(last);
+                                                        setFineAmount(0);
+                                                        setShowAddModal(true);
+                                                    }}
+                                                >
+                                                    <FiPlus size={14} /> Fine
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -261,6 +323,52 @@ export default function NCSSCDashboard() {
                     </div>
                 )}
             </div>
+
+            {/* Add Fine Modal */}
+            {showAddModal && selectedStudent && (
+                <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>Add Fine: {selectedStudent.student?.full_name}</h3>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowAddModal(false)}><FiX size={18} /></button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label className="form-label">Description</label>
+                                <select
+                                    className="form-control"
+                                    value={fineDescription}
+                                    onChange={e => {
+                                        setFineDescription(e.target.value);
+                                        if (e.target.value && typeof window !== 'undefined') {
+                                            window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
+                                        }
+                                    }}
+                                >
+                                    <option value="">Select description…</option>
+                                    {descriptionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Amount (₱)</label>
+                                <input
+                                    type="number"
+                                    className="form-control"
+                                    value={fineAmount || ''}
+                                    onChange={e => setFineAmount(parseFloat(e.target.value) || 0)}
+                                    placeholder="0.00"
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowAddModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleSaveFine} disabled={saving}>
+                                {saving ? 'Saving…' : 'Add Fine'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
