@@ -16,6 +16,7 @@ export default function StudentsPage() {
     const [showAddFineModal, setShowAddFineModal] = useState(false);
     const [showDescModal, setShowDescModal] = useState(false);
     const [newDesc, setNewDesc] = useState('');
+    const [isCustomDesc, setIsCustomDesc] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
     const [fineDescription, setFineDescription] = useState('');
     const [fineAmount, setFineAmount] = useState(0);
@@ -60,6 +61,12 @@ export default function StudentsPage() {
                 issued_by: profile.id,
             });
             if (insertError) throw insertError;
+
+            // Auto-add to templates
+            if (isCustomDesc && fineDescription.trim() && !descriptionOptions.includes(fineDescription.trim())) {
+                addDescriptionOption(fineDescription.trim());
+            }
+
             setSuccess(`Fine added for ${selectedStudent.full_name}.`);
             setShowAddFineModal(false);
             refreshFines();
@@ -153,9 +160,9 @@ export default function StudentsPage() {
                                                     {profile?.role !== 'student' && (
                                                         <button className="btn btn-sm btn-primary" onClick={() => {
                                                             setSelectedStudent(s);
-                                                            const last = typeof window !== 'undefined' ? window.localStorage.getItem(LAST_DESCRIPTION_STORAGE_KEY) || '' : '';
-                                                            setFineDescription(last);
+                                                            setFineDescription('');
                                                             setFineAmount(0);
+                                                            setIsCustomDesc(false);
                                                             setShowAddFineModal(true);
                                                         }}>
                                                             <FiPlus size={14} /> Fine
@@ -216,21 +223,40 @@ export default function StudentsPage() {
                             {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
                             <div className="form-group">
                                 <label className="form-label">Description</label>
-                                <input
-                                    className="form-control"
-                                    list="student-description-list"
-                                    value={fineDescription}
-                                    onChange={e => {
-                                        setFineDescription(e.target.value);
-                                        if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
-                                    }}
-                                    placeholder="Type or select a description..."
-                                />
-                                <datalist id="student-description-list">
-                                    {descriptionOptions.map((opt: string) => (
-                                        <option key={opt} value={opt} />
-                                    ))}
-                                </datalist>
+                                {isCustomDesc ? (
+                                    <div className="flex-col gap-xs">
+                                        <input
+                                            className="form-control"
+                                            value={fineDescription}
+                                            onChange={e => setFineDescription(e.target.value)}
+                                            placeholder="Type custom description..."
+                                            autoFocus
+                                        />
+                                        <button className="text-xs text-primary btn-link text-left" onClick={() => setIsCustomDesc(false)}>
+                                            ← Back to templates
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <select
+                                        className="form-control"
+                                        value={descriptionOptions.includes(fineDescription) ? fineDescription : ""}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val === "MANUAL_ENTRY") {
+                                                setIsCustomDesc(true);
+                                                setFineDescription("");
+                                            } else {
+                                                setFineDescription(val);
+                                            }
+                                        }}
+                                    >
+                                        <option value="">-- Select a template --</option>
+                                        {descriptionOptions.map((opt: string) => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                        <option value="MANUAL_ENTRY">✍️ Type Custom...</option>
+                                    </select>
+                                )}
                             </div>
                             <div className="form-group"><label className="form-label">Amount (₱)</label>
                                 <input type="number" className="form-control" value={fineAmount || ''} onChange={e => setFineAmount(parseFloat(e.target.value) || 0)} />

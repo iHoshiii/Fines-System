@@ -33,10 +33,12 @@ export default function FinesPage() {
 
     const fines = isStudent ? (allFines || []).filter(f => f.student_id === profile!.id) : (allFines || []);
 
+    const [isCustomDesc, setIsCustomDesc] = useState(false);
+
     const openAddModal = () => {
-        const last = typeof window !== 'undefined' ? window.localStorage.getItem(LAST_DESCRIPTION_STORAGE_KEY) || '' : '';
         setEditingFine(null);
-        setFormData({ student_id: '', amount: 0, description: last, status: 'unpaid' });
+        setFormData({ student_id: '', amount: 0, description: '', status: 'unpaid' });
+        setIsCustomDesc(false);
         setError(null);
         setShowModal(true);
     };
@@ -58,6 +60,7 @@ export default function FinesPage() {
             description: fine.description,
             status: fine.status,
         });
+        setIsCustomDesc(!descriptionOptions.includes(fine.description));
         setError(null);
         setShowModal(true);
     };
@@ -67,6 +70,12 @@ export default function FinesPage() {
             setError('Missing required fields');
             return;
         }
+
+        // Auto-add custom description to templates
+        if (isCustomDesc && formData.description.trim() && !descriptionOptions.includes(formData.description.trim())) {
+            addDescriptionOption(formData.description.trim());
+        }
+
         setSaving(true);
         setError(null);
         try {
@@ -265,22 +274,41 @@ export default function FinesPage() {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Description</label>
-                                <input
-                                    className="form-control"
-                                    list="description-list"
-                                    value={formData.description}
-                                    onChange={e => {
-                                        setFormData(p => ({ ...p, description: e.target.value }));
-                                        if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
-                                    }}
-                                    placeholder="Type or select a description..."
-                                />
-                                <datalist id="description-list">
-                                    {descriptionOptions.map(opt => (
-                                        <option key={opt} value={opt} />
-                                    ))}
-                                </datalist>
-                                <p className="text-xs text-muted mt-xs">You can type a custom description or pick from the list.</p>
+                                {isCustomDesc ? (
+                                    <div className="flex-col gap-xs">
+                                        <input
+                                            className="form-control"
+                                            value={formData.description}
+                                            onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
+                                            placeholder="Type custom description..."
+                                            autoFocus
+                                        />
+                                        <button className="text-xs text-primary btn-link text-left" onClick={() => setIsCustomDesc(false)}>
+                                            ← Back to template list
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <select
+                                        className="form-control"
+                                        value={descriptionOptions.includes(formData.description) ? formData.description : ""}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val === "MANUAL_ENTRY") {
+                                                setIsCustomDesc(true);
+                                                setFormData(p => ({ ...p, description: "" }));
+                                            } else {
+                                                setFormData(p => ({ ...p, description: val }));
+                                            }
+                                        }}
+                                    >
+                                        <option value="">Select Event</option>
+                                        {descriptionOptions.map(opt => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                        <option value="MANUAL_ENTRY">✍️ Type Custom Description...</option>
+                                    </select>
+                                )}
+                                <p className="text-xs text-muted mt-xs">Select from templates or type a custom reason.</p>
                             </div>
                             <div className="form-grid">
                                 <div className="form-group">
