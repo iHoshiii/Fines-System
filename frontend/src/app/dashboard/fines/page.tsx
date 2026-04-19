@@ -10,12 +10,14 @@ import { format } from 'date-fns';
 
 export default function FinesPage() {
     const { profile } = useAuth();
-    const { fines: allFines, students, loading, refreshFines, descriptionOptions } = useData();
+    const { fines: allFines, students, loading, refreshFines, descriptionOptions, addDescriptionOption } = useData();
     const isStudent = profile?.role === 'student';
 
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
     const [showModal, setShowModal] = useState(false);
+    const [showDescModal, setShowDescModal] = useState(false);
+    const [newDesc, setNewDesc] = useState('');
     const [editingFine, setEditingFine] = useState<Fine | null>(null);
     const [formData, setFormData] = useState<FineFormData>({
         student_id: '',
@@ -37,6 +39,15 @@ export default function FinesPage() {
         setFormData({ student_id: '', amount: 0, description: last, status: 'unpaid' });
         setError(null);
         setShowModal(true);
+    };
+
+    const handleAddDescription = () => {
+        if (!newDesc.trim()) return;
+        addDescriptionOption(newDesc.trim());
+        setNewDesc('');
+        setShowDescModal(false);
+        setSuccess('Template added successfully');
+        setTimeout(() => setSuccess(null), 3000);
     };
 
     const openEditModal = (fine: Fine) => {
@@ -116,6 +127,9 @@ export default function FinesPage() {
                 </div>
                 {!isStudent && (
                     <div className="flex gap-sm">
+                        <button className="btn btn-ghost" onClick={() => { setShowDescModal(true); setError(null); }}>
+                            <FiPlus size={16} /> Add Description
+                        </button>
                         <button className="btn btn-primary" onClick={openAddModal}>
                             <FiPlus size={16} /> Add Fine
                         </button>
@@ -220,7 +234,7 @@ export default function FinesPage() {
                 </div>
             </div>
 
-            {/* Add/Edit Modal */}
+            {/* Add Fine Modal */}
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
@@ -251,19 +265,22 @@ export default function FinesPage() {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Description</label>
-                                <select
+                                <input
                                     className="form-control"
+                                    list="description-list"
                                     value={formData.description}
                                     onChange={e => {
                                         setFormData(p => ({ ...p, description: e.target.value }));
                                         if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
                                     }}
-                                >
-                                    <option value="">Select description...</option>
+                                    placeholder="Type or select a description..."
+                                />
+                                <datalist id="description-list">
                                     {descriptionOptions.map(opt => (
-                                        <option key={opt} value={opt}>{opt}</option>
+                                        <option key={opt} value={opt} />
                                     ))}
-                                </select>
+                                </datalist>
+                                <p className="text-xs text-muted mt-xs">You can type a custom description or pick from the list.</p>
                             </div>
                             <div className="form-grid">
                                 <div className="form-group">
@@ -292,6 +309,42 @@ export default function FinesPage() {
                             <button className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
                             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
                                 <FiSave size={15} /> {saving ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Description Template Modal */}
+            {showDescModal && (
+                <div className="modal-overlay" onClick={() => setShowDescModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
+                        <div className="modal-header">
+                            <h3>Add Description Template</h3>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowDescModal(false)}>
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <p className="text-sm text-muted mb-md">
+                                Add a common event or fine reason (e.g., "Meeting Absence"). This will appear as a suggestion when adding fines.
+                            </p>
+                            <div className="form-group">
+                                <label className="form-label">Description Text</label>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={newDesc}
+                                    onChange={e => setNewDesc(e.target.value)}
+                                    placeholder="e.g. Foundation Day Absence"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowDescModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleAddDescription}>
+                                <FiPlus size={15} /> Add Template
                             </button>
                         </div>
                     </div>

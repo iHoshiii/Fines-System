@@ -14,6 +14,7 @@ interface DataContextType {
     refreshFines: () => Promise<void>;
     refreshStudents: () => Promise<void>;
     lastUpdated: number | null;
+    addDescriptionOption: (option: string) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -119,6 +120,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         await fetchStudents();
     };
 
+    const addDescriptionOption = (option: string) => {
+        if (!option.trim()) return;
+        if (typeof window === 'undefined') return;
+
+        const stored = window.localStorage.getItem(DESCRIPTION_STORAGE_KEY);
+        let current: string[] = [];
+        if (stored) {
+            try { current = JSON.parse(stored); } catch (e) { }
+        }
+        if (!current.includes(option.trim())) {
+            const updated = [...current, option.trim()];
+            window.localStorage.setItem(DESCRIPTION_STORAGE_KEY, JSON.stringify(updated));
+            setDescriptionOptions(prev => Array.from(new Set([...prev, option.trim()])));
+        }
+    };
+
     useEffect(() => {
         if (profile) {
             const isNewUser = cacheRef.current.userId !== profile.id;
@@ -149,7 +166,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             loading,
             refreshFines,
             refreshStudents,
-            lastUpdated
+            lastUpdated,
+            addDescriptionOption
         }}>
             {children}
         </DataContext.Provider>

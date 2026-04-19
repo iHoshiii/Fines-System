@@ -10,10 +10,12 @@ import { format } from 'date-fns';
 
 export default function StudentsPage() {
     const { profile } = useAuth();
-    const { students, fines: allFines, loading, refreshFines, descriptionOptions } = useData();
+    const { students, fines: allFines, loading, refreshFines, descriptionOptions, addDescriptionOption } = useData();
 
     const [search, setSearch] = useState('');
     const [showAddFineModal, setShowAddFineModal] = useState(false);
+    const [showDescModal, setShowDescModal] = useState(false);
+    const [newDesc, setNewDesc] = useState('');
     const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
     const [fineDescription, setFineDescription] = useState('');
     const [fineAmount, setFineAmount] = useState(0);
@@ -23,6 +25,13 @@ export default function StudentsPage() {
     const [showViewFinesModal, setShowViewFinesModal] = useState(false);
 
     const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
+
+    const handleAddDescription = () => {
+        if (!newDesc.trim()) return;
+        addDescriptionOption(newDesc.trim());
+        setNewDesc('');
+        setShowDescModal(false);
+    };
 
     const finesCounts = (allFines || []).reduce((acc: Record<string, { total: number; unpaid: number }>, f: any) => {
         const sid = f.student_id;
@@ -70,6 +79,11 @@ export default function StudentsPage() {
                 <div className="page-header-left">
                     <h2>Students</h2>
                     <p>View all enrolled students and their fine status.</p>
+                </div>
+                <div className="flex gap-sm">
+                    <button className="btn btn-ghost" onClick={() => setShowDescModal(true)}>
+                        <FiPlus size={16} /> Add Description
+                    </button>
                 </div>
             </div>
 
@@ -200,20 +214,64 @@ export default function StudentsPage() {
                         <div className="modal-header"><h3>Issue Fine: {selectedStudent.full_name}</h3><button className="btn btn-icon btn-ghost" onClick={() => setShowAddFineModal(false)}><FiX size={18} /></button></div>
                         <div className="modal-body">
                             {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
-                            <div className="form-group"><label className="form-label">Description</label>
-                                <select className="form-control" value={fineDescription} onChange={e => {
-                                    setFineDescription(e.target.value);
-                                    if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
-                                }}>
-                                    <option value="">Select description...</option>
-                                    {descriptionOptions.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
+                            <div className="form-group">
+                                <label className="form-label">Description</label>
+                                <input
+                                    className="form-control"
+                                    list="student-description-list"
+                                    value={fineDescription}
+                                    onChange={e => {
+                                        setFineDescription(e.target.value);
+                                        if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
+                                    }}
+                                    placeholder="Type or select a description..."
+                                />
+                                <datalist id="student-description-list">
+                                    {descriptionOptions.map((opt: string) => (
+                                        <option key={opt} value={opt} />
+                                    ))}
+                                </datalist>
                             </div>
                             <div className="form-group"><label className="form-label">Amount (₱)</label>
                                 <input type="number" className="form-control" value={fineAmount || ''} onChange={e => setFineAmount(parseFloat(e.target.value) || 0)} />
                             </div>
                         </div>
                         <div className="modal-footer"><button className="btn btn-ghost" onClick={() => setShowAddFineModal(false)}>Cancel</button><button className="btn btn-primary" onClick={handleSaveFine} disabled={savingFine}>{savingFine ? 'Saving...' : 'Add Fine'}</button></div>
+                    </div>
+                </div>
+            )}
+            {/* Add Description Template Modal */}
+            {showDescModal && (
+                <div className="modal-overlay" onClick={() => setShowDescModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
+                        <div className="modal-header">
+                            <h3>Add Description Template</h3>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowDescModal(false)}>
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <p className="text-sm text-muted mb-md">
+                                Add a common event or fine reason. This will appear as a suggestion when adding fines.
+                            </p>
+                            <div className="form-group">
+                                <label className="form-label">Description Text</label>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={newDesc}
+                                    onChange={e => setNewDesc(e.target.value)}
+                                    placeholder="e.g. Foundation Day Absence"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowDescModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleAddDescription}>
+                                <FiPlus size={15} /> Add Template
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

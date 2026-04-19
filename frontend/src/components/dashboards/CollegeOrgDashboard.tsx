@@ -9,15 +9,24 @@ import { format } from 'date-fns';
 
 export default function CollegeOrgDashboard() {
     const { profile } = useAuth();
-    const { fines: allFines, totalStudents, loading, refreshFines, descriptionOptions } = useData();
+    const { fines: allFines, totalStudents, loading, refreshFines, descriptionOptions, addDescriptionOption } = useData();
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [showModal, setShowModal] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showDescModal, setShowDescModal] = useState(false);
+    const [newDesc, setNewDesc] = useState('');
     const [fineDescription, setFineDescription] = useState('');
     const [fineAmount, setFineAmount] = useState(0);
     const [saving, setSaving] = useState(false);
 
     const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
+
+    const handleAddDescription = () => {
+        if (!newDesc.trim()) return;
+        addDescriptionOption(newDesc.trim());
+        setNewDesc('');
+        setShowDescModal(false);
+    };
 
     // Use fines from DataContext directly (already filtered)
     const fines = allFines || [];
@@ -79,6 +88,11 @@ export default function CollegeOrgDashboard() {
                 <div className="page-header-left">
                     <h2>{greetingTime()}, {profile?.full_name?.split(' ')[0] || 'College Org'} 👋</h2>
                     <p>Welcome to the College Organization Dashboard. Manage your students' fines here.</p>
+                </div>
+                <div className="flex gap-sm">
+                    <button className="btn btn-ghost" onClick={() => setShowDescModal(true)}>
+                        <FiPlus size={16} /> Add Description
+                    </button>
                 </div>
             </div>
 
@@ -239,13 +253,21 @@ export default function CollegeOrgDashboard() {
                         <div className="modal-body">
                             <div className="form-group">
                                 <label className="form-label">Description</label>
-                                <select className="form-control" value={fineDescription} onChange={e => {
-                                    setFineDescription(e.target.value);
-                                    if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
-                                }}>
-                                    <option value="">Select description...</option>
-                                    {descriptionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
+                                <input
+                                    className="form-control"
+                                    list="college-description-list"
+                                    value={fineDescription}
+                                    onChange={e => {
+                                        setFineDescription(e.target.value);
+                                        if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
+                                    }}
+                                    placeholder="Type or select a description..."
+                                />
+                                <datalist id="college-description-list">
+                                    {descriptionOptions.map(opt => (
+                                        <option key={opt} value={opt} />
+                                    ))}
+                                </datalist>
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Amount (₱)</label>
@@ -255,6 +277,41 @@ export default function CollegeOrgDashboard() {
                         <div className="modal-footer">
                             <button className="btn btn-ghost" onClick={() => setShowAddModal(false)}>Cancel</button>
                             <button className="btn btn-primary" onClick={handleSaveFine} disabled={saving}>{saving ? 'Saving…' : 'Add Fine'}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Add Description Template Modal */}
+            {showDescModal && (
+                <div className="modal-overlay" onClick={() => setShowDescModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
+                        <div className="modal-header">
+                            <h3>Add Description Template</h3>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowDescModal(false)}>
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <p className="text-sm text-muted mb-md">
+                                Add a common event or fine reason. This will appear as a suggestion when adding fines.
+                            </p>
+                            <div className="form-group">
+                                <label className="form-label">Description Text</label>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={newDesc}
+                                    onChange={e => setNewDesc(e.target.value)}
+                                    placeholder="e.g. Foundation Day Absence"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowDescModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleAddDescription}>
+                                <FiPlus size={15} /> Add Template
+                            </button>
                         </div>
                     </div>
                 </div>
