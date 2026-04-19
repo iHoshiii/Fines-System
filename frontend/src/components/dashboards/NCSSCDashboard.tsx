@@ -24,7 +24,7 @@ export default function NCSSCDashboard() {
     // Filters fines by organization (unless admin)
     const fines = profile?.role === 'admin'
         ? (allFines || [])
-        : (allFines || []).filter(f => (f.issuer as any)?.organization_id === profile?.organization_id);
+        : (allFines || []).filter((f: any) => (f.issuer as any)?.organization_id === profile?.organization_id);
 
     const handleSaveFine = async () => {
         if (!selectedStudent || !fineDescription || fineAmount <= 0) return;
@@ -48,7 +48,7 @@ export default function NCSSCDashboard() {
     };
 
     // Group fines by student
-    const groupedFines = fines.reduce((acc, fine) => {
+    const groupedFines = fines.reduce((acc: any, fine: any) => {
         const studentId = fine.student_id;
         if (!acc[studentId]) {
             acc[studentId] = {
@@ -56,7 +56,7 @@ export default function NCSSCDashboard() {
                 student: fine.student,
                 totalAmount: 0,
                 count: 0,
-                status: 'paid' as 'paid' | 'unpaid',
+                status: 'paid',
                 lastDate: fine.created_at,
                 description: fine.description
             };
@@ -65,11 +65,11 @@ export default function NCSSCDashboard() {
         acc[studentId].count += 1;
         if (fine.status === 'unpaid') acc[studentId].status = 'unpaid';
         return acc;
-    }, {} as Record<string, any>);
+    }, {});
 
     const displayFines = Object.values(groupedFines);
-    const unpaidFines = fines.filter(f => f.status === 'unpaid');
-    const paidFines = fines.filter(f => f.status === 'paid');
+    const unpaidFines = fines.filter((f: any) => f.status === 'unpaid');
+    const paidFines = fines.filter((f: any) => f.status === 'paid');
 
     const greetingTime = () => {
         const h = new Date().getHours();
@@ -148,7 +148,7 @@ export default function NCSSCDashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {displayFines.map((summary) => (
+                                {displayFines.map((summary: any) => (
                                     <tr key={summary.id}>
                                         <td>
                                             <div>
@@ -207,8 +207,8 @@ export default function NCSSCDashboard() {
                         <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
                             <div className="flex-col gap-sm">
                                 {allFines
-                                    .filter(f => f.student_id === selectedStudent.id)
-                                    .map(fine => (
+                                    .filter((f: any) => f.student_id === selectedStudent.id)
+                                    .map((fine: any) => (
                                         <div key={fine.id} className="flex-between p-sm card" style={{ background: 'var(--color-bg-alt)' }}>
                                             <div>
                                                 <p style={{ fontWeight: 600 }}>{fine.description}</p>
@@ -260,8 +260,8 @@ export default function NCSSCDashboard() {
                                         }
                                     }}
                                 >
-                                    <option value="">Select description…</option>
-                                    {descriptionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                    <option value="">Select description...</option>
+                                    {descriptionOptions.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
                             </div>
                             <div className="form-group">
@@ -278,7 +278,7 @@ export default function NCSSCDashboard() {
                         <div className="modal-footer">
                             <button className="btn btn-ghost" onClick={() => setShowAddModal(false)}>Cancel</button>
                             <button className="btn btn-primary" onClick={handleSaveFine} disabled={saving}>
-                                {saving ? 'Saving…' : 'Add Fine'}
+                                {saving ? 'Saving...' : 'Add Fine'}
                             </button>
                         </div>
                     </div>

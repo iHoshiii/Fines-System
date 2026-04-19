@@ -245,7 +245,7 @@ export default function CollegeOrgDashboard() {
                                     setFineDescription(e.target.value);
                                     if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
                                 }}>
-                                    <option value="">Select description…</option>
+                                    <option value="">Select description...</option>
                                     {descriptionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
                             </div>

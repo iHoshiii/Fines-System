@@ -24,14 +24,11 @@ export default function StudentsPage() {
 
     const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
 
-    // Build counts from global fines
-    const finesCounts = (allFines || []).reduce((acc: Record<string, { total: number; unpaid: number }>, f) => {
-        // Filter by org unless admin
-        const issuerOrg = (f.issuer as any)?.organization_id;
+    const finesCounts = (allFines || []).reduce((acc: Record<string, { total: number; unpaid: number }>, f: any) => {
+        const issuerOrg = f.issuer?.organization_id;
         if (profile?.role !== 'admin' && issuerOrg !== profile?.organization_id) {
             return acc;
         }
-
         const sid = f.student_id;
         if (!acc[sid]) acc[sid] = { total: 0, unpaid: 0 };
         acc[sid].total++;
@@ -39,20 +36,11 @@ export default function StudentsPage() {
         return acc;
     }, {});
 
-    const filtered = students.filter(s =>
+    const filtered = (students || []).filter(s =>
         search === '' ||
         s.full_name.toLowerCase().includes(search.toLowerCase()) ||
         s.student_id_number?.toLowerCase().includes(search.toLowerCase())
     );
-
-    const openAddFineModal = (student: Profile) => {
-        const lastDesc = typeof window !== 'undefined' ? window.localStorage.getItem(LAST_DESCRIPTION_STORAGE_KEY) || '' : '';
-        setSelectedStudent(student);
-        setFineDescription(lastDesc);
-        setFineAmount(0);
-        setError(null);
-        setShowAddFineModal(true);
-    };
 
     const handleSaveFine = async () => {
         if (!profile?.id || !selectedStudent || !fineDescription.trim() || fineAmount <= 0) return;
@@ -98,7 +86,7 @@ export default function StudentsPage() {
                     <FiSearch size={16} />
                     <input
                         type="text"
-                        placeholder="Search by name or ID number…"
+                        placeholder="Search students..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                     />
@@ -110,20 +98,16 @@ export default function StudentsPage() {
             <div className="table-container">
                 <div className="table-wrapper">
                     {loading && students.length === 0 ? (
-                        <div style={{ padding: 40, textAlign: 'center' }}>Loading…</div>
+                        <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>
                     ) : filtered.length === 0 ? (
-                        <div className="empty-state">
-                            <FiUsers />
-                            <h4>No students found</h4>
-                        </div>
+                        <div className="empty-state"><h4>No students found</h4></div>
                     ) : (
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>ID Number</th>
-                                    <th>Total Fines</th>
-                                    <th>Status</th>
+                                    <th>Student</th>
+                                    <th>Course/Year</th>
+                                    <th>Fines Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -135,26 +119,42 @@ export default function StudentsPage() {
                                             <td>
                                                 <div className="flex align-center gap-sm">
                                                     <div className="avatar-sm initials">
-                                                        {s.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                                                        {s.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                                                     </div>
-                                                    <span style={{ fontWeight: 600 }}>{s.full_name}</span>
+                                                    <div>
+                                                        <p style={{ fontWeight: 600 }}>{s.full_name}</p>
+                                                        <p className="text-sm text-muted">{s.student_id_number || 'No ID'}</p>
+                                                    </div>
                                                 </div>
                                             </td>
-                                            <td className="text-muted">{s.student_id_number || '—'}</td>
-                                            <td>{counts.total}</td>
+                                            <td><p className="text-sm">{s.course || 'N/A'}</p><p className="text-xs text-muted">Year {s.year_level || '—'}</p></td>
                                             <td>
-                                                {counts.unpaid > 0 ? (
-                                                    <span className="badge badge-unpaid"><FiAlertCircle size={11} /> {counts.unpaid} unpaid</span>
-                                                ) : <span className="badge badge-paid">✓ Clear</span>}
+                                                {counts.total === 0 ? (
+                                                    <span className="text-sm text-muted">No fines</span>
+                                                ) : (
+                                                    <div className="flex-col gap-xs">
+                                                        <span className={`badge ${counts.unpaid > 0 ? 'badge-unpaid' : 'badge-paid'}`} style={{ width: 'fit-content' }}>
+                                                            {counts.unpaid} Unpaid / {counts.total} Total
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </td>
                                             <td>
                                                 <div className="flex gap-xs">
                                                     <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedStudent(s); setShowViewFinesModal(true); }}>
                                                         <FiEye size={14} /> View
                                                     </button>
-                                                    <button className="btn btn-sm btn-primary" onClick={() => openAddFineModal(s)}>
-                                                        <FiPlus size={14} /> Add Fine
-                                                    </button>
+                                                    {profile?.role !== 'student' && (
+                                                        <button className="btn btn-sm btn-primary" onClick={() => {
+                                                            setSelectedStudent(s);
+                                                            const last = typeof window !== 'undefined' ? window.localStorage.getItem(LAST_DESCRIPTION_STORAGE_KEY) || '' : '';
+                                                            setFineDescription(last);
+                                                            setFineAmount(0);
+                                                            setShowAddFineModal(true);
+                                                        }}>
+                                                            <FiPlus size={14} /> Fine
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -166,68 +166,62 @@ export default function StudentsPage() {
                 </div>
             </div>
 
-            {/* Modals */}
-            {showAddFineModal && selectedStudent && (
-                <div className="modal-overlay" onClick={() => setShowAddFineModal(false)}>
-                    <div className="modal" onClick={e => e.stopPropagation()}>
+            {/* View Fines Modal */}
+            {showViewFinesModal && selectedStudent && (
+                <div className="modal-overlay" onClick={() => setShowViewFinesModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
                         <div className="modal-header">
-                            <h3>Add Fine: {selectedStudent.full_name}</h3>
-                            <button className="btn btn-icon btn-ghost" onClick={() => setShowAddFineModal(false)}><FiX size={18} /></button>
+                            <div><h3>{selectedStudent.full_name}'s Fines</h3><p className="text-sm text-muted">{selectedStudent.student_id_number}</p></div>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowViewFinesModal(false)}><FiX size={18} /></button>
                         </div>
-                        <div className="modal-body">
-                            {error && <div className="alert alert-error">{error}</div>}
-                            <div className="form-group">
-                                <label className="form-label">Description</label>
-                                <select className="form-control" value={fineDescription} onChange={e => {
-                                    setFineDescription(e.target.value);
-                                    if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
-                                }}>
-                                    <option value="">Select description…</option>
-                                    {descriptionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Amount (₱)</label>
-                                <input type="number" className="form-control" value={fineAmount || ''} onChange={e => setFineAmount(parseFloat(e.target.value) || 0)} />
-                            </div>
+                        <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                            {studentFines.length === 0 ? (
+                                <p className="text-center p-md text-muted">No fines issued by your organization (or system-wide).</p>
+                            ) : (
+                                <div className="flex-col gap-sm">
+                                    {studentFines.map(f => (
+                                        <div key={f.id} className="flex-between p-sm card" style={{ background: 'var(--color-bg-alt)' }}>
+                                            <div>
+                                                <p style={{ fontWeight: 600 }}>{f.description}</p>
+                                                <p className="text-xs text-muted">{format(new Date(f.created_at), 'MMM d, yyyy')}</p>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <p style={{ fontWeight: 700, color: f.status === 'unpaid' ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                                                    ₱{Number(f.amount).toFixed(2)}
+                                                </p>
+                                                <span className={`badge badge-${f.status}`} style={{ fontSize: 10 }}>{f.status.toUpperCase()}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-ghost" onClick={() => setShowAddFineModal(false)}>Cancel</button>
-                            <button className="btn btn-primary" onClick={handleSaveFine} disabled={savingFine}>{savingFine ? 'Saving…' : 'Save'}</button>
-                        </div>
+                        <div className="modal-footer"><button className="btn btn-primary" onClick={() => setShowViewFinesModal(false)}>Close</button></div>
                     </div>
                 </div>
             )}
 
-            {showViewFinesModal && selectedStudent && (
-                <div className="modal-overlay" onClick={() => setShowViewFinesModal(false)}>
+            {/* Add Fine Modal */}
+            {showAddFineModal && selectedStudent && (
+                <div className="modal-overlay" onClick={() => setShowAddFineModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h3>Fines for {selectedStudent.full_name}</h3>
-                            <button className="btn btn-icon btn-ghost" onClick={() => setShowViewFinesModal(false)}><FiX size={18} /></button>
-                        </div>
+                        <div className="modal-header"><h3>Issue Fine: {selectedStudent.full_name}</h3><button className="btn btn-icon btn-ghost" onClick={() => setShowAddFineModal(false)}><FiX size={18} /></button></div>
                         <div className="modal-body">
-                            {studentFines.length === 0 ? <p>No fines found.</p> : (
-                                <div className="table-wrapper">
-                                    <table>
-                                        <thead><tr><th>Description</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
-                                        <tbody>
-                                            {studentFines.map(f => (
-                                                <tr key={f.id}>
-                                                    <td>{f.description}</td>
-                                                    <td>₱{Number(f.amount).toFixed(2)}</td>
-                                                    <td><span className={`badge badge-${f.status}`}>{f.status}</span></td>
-                                                    <td>{format(new Date(f.created_at), 'MMM d, yyyy')}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
+                            {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
+                            <div className="form-group"><label className="form-label">Description</label>
+                                <select className="form-control" value={fineDescription} onChange={e => {
+                                    setFineDescription(e.target.value);
+                                    if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
+                                }}>
+                                    <option value="">Select description...</option>
+                                    {descriptionOptions.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group"><label className="form-label">Amount (₱)</label>
+                                <input type="number" className="form-control" value={fineAmount || ''} onChange={e => setFineAmount(parseFloat(e.target.value) || 0)} />
+                            </div>
                         </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-primary" onClick={() => setShowViewFinesModal(false)}>Close</button>
-                        </div>
+                        <div className="modal-footer"><button className="btn btn-ghost" onClick={() => setShowAddFineModal(false)}>Cancel</button><button className="btn btn-primary" onClick={handleSaveFine} disabled={savingFine}>{savingFine ? 'Saving...' : 'Add Fine'}</button></div>
                     </div>
                 </div>
             )}

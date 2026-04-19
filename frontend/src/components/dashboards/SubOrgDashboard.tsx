@@ -210,12 +210,12 @@ export default function SubOrgDashboard() {
                                     setFineDescription(e.target.value);
                                     if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
                                 }}>
-                                    <option value="">Select description…</option>{descriptionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                    <option value="">Select description...</option>{descriptionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
                             </div>
                             <div className="form-group"><label className="form-label">Amount (₱)</label><input type="number" className="form-control" value={fineAmount || ''} onChange={e => setFineAmount(parseFloat(e.target.value) || 0)} /></div>
                         </div>
-                        <div className="modal-footer"><button className="btn btn-ghost" onClick={() => setShowAddModal(false)}>Cancel</button><button className="btn btn-primary" onClick={handleSaveFine} disabled={saving}>{saving ? 'Saving…' : 'Add Fine'}</button></div>
+                        <div className="modal-footer"><button className="btn btn-ghost" onClick={() => setShowAddModal(false)}>Cancel</button><button className="btn btn-primary" onClick={handleSaveFine} disabled={saving}>{saving ? 'Saving...' : 'Add Fine'}</button></div>
                     </div>
                 </div>
             )}
