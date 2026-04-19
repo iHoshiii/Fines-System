@@ -9,10 +9,13 @@ import { format } from 'date-fns';
 
 export default function NCSSCDashboard() {
     const { profile } = useAuth();
-    const { fines: allFines, totalStudents, loading, refreshFines, descriptionOptions } = useData();
+    const { fines: allFines, totalStudents, loading, refreshFines, descriptionOptions, addDescriptionOption } = useData();
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [showModal, setShowModal] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showDescModal, setShowDescModal] = useState(false);
+    const [newDesc, setNewDesc] = useState('');
+    const [isCustomDesc, setIsCustomDesc] = useState(false);
 
     // Form states
     const [fineDescription, setFineDescription] = useState('');
@@ -21,10 +24,15 @@ export default function NCSSCDashboard() {
 
     const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
 
-    // Filters fines by organization (unless admin)
-    const fines = profile?.role === 'admin'
-        ? (allFines || [])
-        : (allFines || []).filter((f: any) => (f.issuer as any)?.organization_id === profile?.organization_id);
+    const handleAddDescription = () => {
+        if (!newDesc.trim()) return;
+        addDescriptionOption(newDesc.trim());
+        setNewDesc('');
+        setShowDescModal(false);
+    };
+
+    // Use fines from DataContext directly (already filtered)
+    const fines = allFines || [];
 
     const handleSaveFine = async () => {
         if (!selectedStudent || !fineDescription || fineAmount <= 0) return;
@@ -38,6 +46,12 @@ export default function NCSSCDashboard() {
                 issued_by: profile!.id
             });
             if (error) throw error;
+
+            // Auto-add to templates
+            if (isCustomDesc && fineDescription.trim() && !descriptionOptions.includes(fineDescription.trim())) {
+                addDescriptionOption(fineDescription.trim());
+            }
+
             setShowAddModal(false);
             refreshFines();
         } catch (e) {
@@ -84,6 +98,11 @@ export default function NCSSCDashboard() {
                 <div className="page-header-left">
                     <h2>{greetingTime()}, {profile?.full_name?.split(' ')[0] || 'NCSSC'} 👋</h2>
                     <p>Welcome to the NCSSC Dashboard. Oversee campus-wide student fines.</p>
+                </div>
+                <div className="flex gap-sm">
+                    <button className="btn btn-ghost" onClick={() => setShowDescModal(true)}>
+                        <FiPlus size={16} /> Add Description
+                    </button>
                 </div>
             </div>
 
@@ -176,9 +195,9 @@ export default function NCSSCDashboard() {
                                                 </button>
                                                 <button className="btn btn-sm btn-primary" onClick={() => {
                                                     setSelectedStudent(summary);
-                                                    const last = typeof window !== 'undefined' ? window.localStorage.getItem(LAST_DESCRIPTION_STORAGE_KEY) || '' : '';
-                                                    setFineDescription(last);
+                                                    setFineDescription('');
                                                     setFineAmount(0);
+                                                    setIsCustomDesc(false);
                                                     setShowAddModal(true);
                                                 }}>
                                                     <FiPlus size={14} /> Fine
@@ -250,19 +269,40 @@ export default function NCSSCDashboard() {
                         <div className="modal-body">
                             <div className="form-group">
                                 <label className="form-label">Description</label>
-                                <select
-                                    className="form-control"
-                                    value={fineDescription}
-                                    onChange={e => {
-                                        setFineDescription(e.target.value);
-                                        if (e.target.value && typeof window !== 'undefined') {
-                                            window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
-                                        }
-                                    }}
-                                >
-                                    <option value="">Select description...</option>
-                                    {descriptionOptions.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
+                                {isCustomDesc ? (
+                                    <div className="flex-col gap-xs">
+                                        <input
+                                            className="form-control"
+                                            value={fineDescription}
+                                            onChange={e => setFineDescription(e.target.value)}
+                                            placeholder="Type custom description..."
+                                            autoFocus
+                                        />
+                                        <button className="text-xs text-primary btn-link text-left" onClick={() => setIsCustomDesc(false)}>
+                                            ← Back to templates
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <select
+                                        className="form-control"
+                                        value={descriptionOptions.includes(fineDescription) ? fineDescription : ""}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val === "MANUAL_ENTRY") {
+                                                setIsCustomDesc(true);
+                                                setFineDescription("");
+                                            } else {
+                                                setFineDescription(val);
+                                            }
+                                        }}
+                                    >
+                                        <option value="" disabled>Select Event</option>
+                                        {descriptionOptions.map((opt: string) => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                        <option value="MANUAL_ENTRY">✍️ Type Custom...</option>
+                                    </select>
+                                )}
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Amount (₱)</label>
@@ -279,6 +319,41 @@ export default function NCSSCDashboard() {
                             <button className="btn btn-ghost" onClick={() => setShowAddModal(false)}>Cancel</button>
                             <button className="btn btn-primary" onClick={handleSaveFine} disabled={saving}>
                                 {saving ? 'Saving...' : 'Add Fine'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Add Description Template Modal */}
+            {showDescModal && (
+                <div className="modal-overlay" onClick={() => setShowDescModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
+                        <div className="modal-header">
+                            <h3>Add Description Template</h3>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowDescModal(false)}>
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <p className="text-sm text-muted mb-md">
+                                Add a common event or fine reason. This will appear as a suggestion when adding fines.
+                            </p>
+                            <div className="form-group">
+                                <label className="form-label">Description Text</label>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={newDesc}
+                                    onChange={e => setNewDesc(e.target.value)}
+                                    placeholder="e.g. Foundation Day Absence"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowDescModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleAddDescription}>
+                                <FiPlus size={15} /> Add Template
                             </button>
                         </div>
                     </div>

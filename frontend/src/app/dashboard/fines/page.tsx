@@ -10,12 +10,14 @@ import { format } from 'date-fns';
 
 export default function FinesPage() {
     const { profile } = useAuth();
-    const { fines: allFines, students, loading, refreshFines, descriptionOptions } = useData();
+    const { fines: allFines, students, loading, refreshFines, descriptionOptions, addDescriptionOption } = useData();
     const isStudent = profile?.role === 'student';
 
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
     const [showModal, setShowModal] = useState(false);
+    const [showDescModal, setShowDescModal] = useState(false);
+    const [newDesc, setNewDesc] = useState('');
     const [editingFine, setEditingFine] = useState<Fine | null>(null);
     const [formData, setFormData] = useState<FineFormData>({
         student_id: '',
@@ -31,12 +33,23 @@ export default function FinesPage() {
 
     const fines = isStudent ? (allFines || []).filter(f => f.student_id === profile!.id) : (allFines || []);
 
+    const [isCustomDesc, setIsCustomDesc] = useState(false);
+
     const openAddModal = () => {
-        const last = typeof window !== 'undefined' ? window.localStorage.getItem(LAST_DESCRIPTION_STORAGE_KEY) || '' : '';
         setEditingFine(null);
-        setFormData({ student_id: '', amount: 0, description: last, status: 'unpaid' });
+        setFormData({ student_id: '', amount: 0, description: '', status: 'unpaid' });
+        setIsCustomDesc(false);
         setError(null);
         setShowModal(true);
+    };
+
+    const handleAddDescription = () => {
+        if (!newDesc.trim()) return;
+        addDescriptionOption(newDesc.trim());
+        setNewDesc('');
+        setShowDescModal(false);
+        setSuccess('Template added successfully');
+        setTimeout(() => setSuccess(null), 3000);
     };
 
     const openEditModal = (fine: Fine) => {
@@ -47,6 +60,7 @@ export default function FinesPage() {
             description: fine.description,
             status: fine.status,
         });
+        setIsCustomDesc(!descriptionOptions.includes(fine.description));
         setError(null);
         setShowModal(true);
     };
@@ -56,6 +70,12 @@ export default function FinesPage() {
             setError('Missing required fields');
             return;
         }
+
+        // Auto-add custom description to templates
+        if (isCustomDesc && formData.description.trim() && !descriptionOptions.includes(formData.description.trim())) {
+            addDescriptionOption(formData.description.trim());
+        }
+
         setSaving(true);
         setError(null);
         try {
@@ -116,6 +136,9 @@ export default function FinesPage() {
                 </div>
                 {!isStudent && (
                     <div className="flex gap-sm">
+                        <button className="btn btn-ghost" onClick={() => { setShowDescModal(true); setError(null); }}>
+                            <FiPlus size={16} /> Add Description
+                        </button>
                         <button className="btn btn-primary" onClick={openAddModal}>
                             <FiPlus size={16} /> Add Fine
                         </button>
@@ -198,14 +221,18 @@ export default function FinesPage() {
                                         </td>
                                         {!isStudent && (
                                             <td>
-                                                <div className="flex gap-xs">
-                                                    <button className="btn btn-icon btn-ghost" onClick={() => openEditModal(f)}>
-                                                        <FiEdit2 size={14} />
-                                                    </button>
-                                                    <button className="btn btn-icon btn-danger" onClick={() => handleDelete(f.id)}>
-                                                        <FiTrash2 size={14} />
-                                                    </button>
-                                                </div>
+                                                {(profile?.role === 'admin' || f.issued_by === profile?.id) ? (
+                                                    <div className="flex gap-xs">
+                                                        <button className="btn btn-icon btn-ghost" onClick={() => openEditModal(f)}>
+                                                            <FiEdit2 size={14} />
+                                                        </button>
+                                                        <button className="btn btn-icon btn-danger" onClick={() => handleDelete(f.id)}>
+                                                            <FiTrash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-muted">View Only</span>
+                                                )}
                                             </td>
                                         )}
                                     </tr>
@@ -216,7 +243,7 @@ export default function FinesPage() {
                 </div>
             </div>
 
-            {/* Add/Edit Modal */}
+            {/* Add Fine Modal */}
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
@@ -239,7 +266,7 @@ export default function FinesPage() {
                                     value={formData.student_id}
                                     onChange={e => setFormData(p => ({ ...p, student_id: e.target.value }))}
                                 >
-                                    <option value="">Select a student...</option>
+                                    <option value="" disabled>Select Student</option>
                                     {students.map(s => (
                                         <option key={s.id} value={s.id}>{s.full_name}</option>
                                     ))}
@@ -247,19 +274,41 @@ export default function FinesPage() {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Description</label>
-                                <select
-                                    className="form-control"
-                                    value={formData.description}
-                                    onChange={e => {
-                                        setFormData(p => ({ ...p, description: e.target.value }));
-                                        if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
-                                    }}
-                                >
-                                    <option value="">Select description...</option>
-                                    {descriptionOptions.map(opt => (
-                                        <option key={opt} value={opt}>{opt}</option>
-                                    ))}
-                                </select>
+                                {isCustomDesc ? (
+                                    <div className="flex-col gap-xs">
+                                        <input
+                                            className="form-control"
+                                            value={formData.description}
+                                            onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
+                                            placeholder="Type custom description..."
+                                            autoFocus
+                                        />
+                                        <button className="text-xs text-primary btn-link text-left" onClick={() => setIsCustomDesc(false)}>
+                                            ← Back to template list
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <select
+                                        className="form-control"
+                                        value={descriptionOptions.includes(formData.description) ? formData.description : ""}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val === "MANUAL_ENTRY") {
+                                                setIsCustomDesc(true);
+                                                setFormData(p => ({ ...p, description: "" }));
+                                            } else {
+                                                setFormData(p => ({ ...p, description: val }));
+                                            }
+                                        }}
+                                    >
+                                        <option value="" disabled>Select Event</option>
+                                        {descriptionOptions.map(opt => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                        <option value="MANUAL_ENTRY">✍️ Type Custom Description...</option>
+                                    </select>
+                                )}
+                                <p className="text-xs text-muted mt-xs">Select from templates or type a custom reason.</p>
                             </div>
                             <div className="form-grid">
                                 <div className="form-group">
@@ -288,6 +337,42 @@ export default function FinesPage() {
                             <button className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
                             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
                                 <FiSave size={15} /> {saving ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Description Template Modal */}
+            {showDescModal && (
+                <div className="modal-overlay" onClick={() => setShowDescModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
+                        <div className="modal-header">
+                            <h3>Add Description Template</h3>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowDescModal(false)}>
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <p className="text-sm text-muted mb-md">
+                                Add a common event or fine reason (e.g., "Meeting Absence"). This will appear as a suggestion when adding fines.
+                            </p>
+                            <div className="form-group">
+                                <label className="form-label">Description Text</label>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={newDesc}
+                                    onChange={e => setNewDesc(e.target.value)}
+                                    placeholder="e.g. Foundation Day Absence"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowDescModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleAddDescription}>
+                                <FiPlus size={15} /> Add Template
                             </button>
                         </div>
                     </div>

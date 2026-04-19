@@ -92,13 +92,16 @@ def read_root():
 
 @app.get("/fines", tags=["Fines"])
 def list_fines(profile=Depends(get_profile)):
-    """List fines. Students see only their own; managers see all."""
+    """List fines. Students see only their own; managers see their issued ones; admin sees all."""
     query = supabase.table("fines").select(
         "*, student:profiles!student_id(id, full_name, student_id_number), issuer:profiles!issued_by(full_name)"
     ).order("created_at", desc=True)
 
     if profile["role"] == "student":
         query = query.eq("student_id", profile["id"])
+    elif profile["role"] != "admin":
+        # Managers (ncssc, college_org, sub_org) see only fines they issued
+        query = query.eq("issued_by", profile["id"])
 
     resp = query.execute()
     return resp.data or []
@@ -118,6 +121,12 @@ def create_fine(data: FineCreate, profile=Depends(require_manager)):
 
 @app.put("/fines/{fine_id}", tags=["Fines"])
 def update_fine(fine_id: str, data: FineUpdate, profile=Depends(require_manager)):
+    # If not admin, verify they are the issuer
+    if profile["role"] != "admin":
+        fine_check = supabase.table("fines").select("issued_by").eq("id", fine_id).single().execute()
+        if not fine_check.data or fine_check.data["issued_by"] != profile["id"]:
+            raise HTTPException(status_code=403, detail="You can only update your own fines.")
+
     update_data = data.model_dump(exclude_none=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="No data to update.")
@@ -128,6 +137,12 @@ def update_fine(fine_id: str, data: FineUpdate, profile=Depends(require_manager)
 
 @app.delete("/fines/{fine_id}", tags=["Fines"], status_code=204)
 def delete_fine(fine_id: str, profile=Depends(require_manager)):
+    # If not admin, verify they are the issuer
+    if profile["role"] != "admin":
+        fine_check = supabase.table("fines").select("issued_by").eq("id", fine_id).single().execute()
+        if not fine_check.data or fine_check.data["issued_by"] != profile["id"]:
+            raise HTTPException(status_code=403, detail="You can only delete your own fines.")
+
     supabase.table("fines").delete().eq("id", fine_id).execute()
     return None
 
@@ -192,7 +207,12 @@ def update_user(user_id: str, data: ProfileUpdate, profile=Depends(require_manag
 
 @app.get("/reports/summary", tags=["Reports"])
 def get_summary(profile=Depends(require_manager)):
-    fines_resp = supabase.table("fines").select("amount, status, student_id").execute()
+    query = supabase.table("fines").select("amount, status, student_id, issued_by")
+    
+    if profile["role"] != "admin":
+        query = query.eq("issued_by", profile["id"])
+        
+    fines_resp = query.execute()
     fines = fines_resp.data or []
 
     total = len(fines)

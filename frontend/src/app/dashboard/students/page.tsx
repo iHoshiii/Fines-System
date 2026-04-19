@@ -10,10 +10,13 @@ import { format } from 'date-fns';
 
 export default function StudentsPage() {
     const { profile } = useAuth();
-    const { students, fines: allFines, loading, refreshFines, descriptionOptions } = useData();
+    const { students, fines: allFines, loading, refreshFines, descriptionOptions, addDescriptionOption } = useData();
 
     const [search, setSearch] = useState('');
     const [showAddFineModal, setShowAddFineModal] = useState(false);
+    const [showDescModal, setShowDescModal] = useState(false);
+    const [newDesc, setNewDesc] = useState('');
+    const [isCustomDesc, setIsCustomDesc] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
     const [fineDescription, setFineDescription] = useState('');
     const [fineAmount, setFineAmount] = useState(0);
@@ -24,11 +27,14 @@ export default function StudentsPage() {
 
     const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
 
+    const handleAddDescription = () => {
+        if (!newDesc.trim()) return;
+        addDescriptionOption(newDesc.trim());
+        setNewDesc('');
+        setShowDescModal(false);
+    };
+
     const finesCounts = (allFines || []).reduce((acc: Record<string, { total: number; unpaid: number }>, f: any) => {
-        const issuerOrg = f.issuer?.organization_id;
-        if (profile?.role !== 'admin' && issuerOrg !== profile?.organization_id) {
-            return acc;
-        }
         const sid = f.student_id;
         if (!acc[sid]) acc[sid] = { total: 0, unpaid: 0 };
         acc[sid].total++;
@@ -55,6 +61,12 @@ export default function StudentsPage() {
                 issued_by: profile.id,
             });
             if (insertError) throw insertError;
+
+            // Auto-add to templates
+            if (isCustomDesc && fineDescription.trim() && !descriptionOptions.includes(fineDescription.trim())) {
+                addDescriptionOption(fineDescription.trim());
+            }
+
             setSuccess(`Fine added for ${selectedStudent.full_name}.`);
             setShowAddFineModal(false);
             refreshFines();
@@ -66,11 +78,7 @@ export default function StudentsPage() {
         }
     };
 
-    const studentFines = (allFines || []).filter(f => {
-        const matchesStudent = f.student_id === selectedStudent?.id;
-        const matchesOrg = profile?.role === 'admin' || (f.issuer as any)?.organization_id === profile?.organization_id;
-        return matchesStudent && matchesOrg;
-    });
+    const studentFines = (allFines || []).filter(f => f.student_id === selectedStudent?.id);
 
     return (
         <div>
@@ -78,6 +86,11 @@ export default function StudentsPage() {
                 <div className="page-header-left">
                     <h2>Students</h2>
                     <p>View all enrolled students and their fine status.</p>
+                </div>
+                <div className="flex gap-sm">
+                    <button className="btn btn-ghost" onClick={() => setShowDescModal(true)}>
+                        <FiPlus size={16} /> Add Description
+                    </button>
                 </div>
             </div>
 
@@ -147,9 +160,9 @@ export default function StudentsPage() {
                                                     {profile?.role !== 'student' && (
                                                         <button className="btn btn-sm btn-primary" onClick={() => {
                                                             setSelectedStudent(s);
-                                                            const last = typeof window !== 'undefined' ? window.localStorage.getItem(LAST_DESCRIPTION_STORAGE_KEY) || '' : '';
-                                                            setFineDescription(last);
+                                                            setFineDescription('');
                                                             setFineAmount(0);
+                                                            setIsCustomDesc(false);
                                                             setShowAddFineModal(true);
                                                         }}>
                                                             <FiPlus size={14} /> Fine
@@ -208,20 +221,83 @@ export default function StudentsPage() {
                         <div className="modal-header"><h3>Issue Fine: {selectedStudent.full_name}</h3><button className="btn btn-icon btn-ghost" onClick={() => setShowAddFineModal(false)}><FiX size={18} /></button></div>
                         <div className="modal-body">
                             {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
-                            <div className="form-group"><label className="form-label">Description</label>
-                                <select className="form-control" value={fineDescription} onChange={e => {
-                                    setFineDescription(e.target.value);
-                                    if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
-                                }}>
-                                    <option value="">Select description...</option>
-                                    {descriptionOptions.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
+                            <div className="form-group">
+                                <label className="form-label">Description</label>
+                                {isCustomDesc ? (
+                                    <div className="flex-col gap-xs">
+                                        <input
+                                            className="form-control"
+                                            value={fineDescription}
+                                            onChange={e => setFineDescription(e.target.value)}
+                                            placeholder="Type custom description..."
+                                            autoFocus
+                                        />
+                                        <button className="text-xs text-primary btn-link text-left" onClick={() => setIsCustomDesc(false)}>
+                                            ← Back to templates
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <select
+                                        className="form-control"
+                                        value={descriptionOptions.includes(fineDescription) ? fineDescription : ""}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val === "MANUAL_ENTRY") {
+                                                setIsCustomDesc(true);
+                                                setFineDescription("");
+                                            } else {
+                                                setFineDescription(val);
+                                            }
+                                        }}
+                                    >
+                                        <option value="" disabled>Select Event</option>
+                                        {descriptionOptions.map((opt: string) => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                        <option value="MANUAL_ENTRY">✍️ Type Custom...</option>
+                                    </select>
+                                )}
                             </div>
                             <div className="form-group"><label className="form-label">Amount (₱)</label>
                                 <input type="number" className="form-control" value={fineAmount || ''} onChange={e => setFineAmount(parseFloat(e.target.value) || 0)} />
                             </div>
                         </div>
                         <div className="modal-footer"><button className="btn btn-ghost" onClick={() => setShowAddFineModal(false)}>Cancel</button><button className="btn btn-primary" onClick={handleSaveFine} disabled={savingFine}>{savingFine ? 'Saving...' : 'Add Fine'}</button></div>
+                    </div>
+                </div>
+            )}
+            {/* Add Description Template Modal */}
+            {showDescModal && (
+                <div className="modal-overlay" onClick={() => setShowDescModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
+                        <div className="modal-header">
+                            <h3>Add Description Template</h3>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowDescModal(false)}>
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <p className="text-sm text-muted mb-md">
+                                Add a common event or fine reason. This will appear as a suggestion when adding fines.
+                            </p>
+                            <div className="form-group">
+                                <label className="form-label">Description Text</label>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={newDesc}
+                                    onChange={e => setNewDesc(e.target.value)}
+                                    placeholder="e.g. Foundation Day Absence"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowDescModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleAddDescription}>
+                                <FiPlus size={15} /> Add Template
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

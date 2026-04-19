@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Fine, Profile } from '@/types';
 import { useAuth } from './AuthContext';
@@ -14,6 +14,7 @@ interface DataContextType {
     refreshFines: () => Promise<void>;
     refreshStudents: () => Promise<void>;
     lastUpdated: number | null;
+    addDescriptionOption: (option: string) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -28,23 +29,42 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
+    const cacheRef = useRef<{ lastFinesUpdate: number; lastStudentsUpdate: number; userId: string | null }>({
+        lastFinesUpdate: 0,
+        lastStudentsUpdate: 0,
+        userId: null
+    });
+
     const fetchFines = useCallback(async () => {
         if (!profile) return;
 
         const now = Date.now();
-        if (lastUpdated && now - lastUpdated < 60000 && fines.length > 0) {
+        const isNewUser = cacheRef.current.userId !== profile.id;
+
+        if (!isNewUser && now - cacheRef.current.lastFinesUpdate < 60000 && fines.length > 0) {
             return;
         }
 
         try {
-            const { data } = await supabase
+            let query = supabase
                 .from('fines')
                 .select('*, student:profiles!student_id(full_name, student_id_number), issuer:profiles!issued_by(full_name, organization_id)')
                 .order('created_at', { ascending: false });
 
+            if (profile.role === 'student') {
+                query = query.eq('student_id', profile.id);
+            } else if (profile.role !== 'admin') {
+                query = query.eq('issued_by', profile.id);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+
             const list = data || [];
             setFines(list);
-            setLastUpdated(Date.now());
+
+            cacheRef.current.lastFinesUpdate = Date.now();
+            cacheRef.current.userId = profile.id;
 
             // Build description options
             const descs = list.map(f => f.description).filter(Boolean);
@@ -65,11 +85,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
             console.error('Error fetching fines:', error);
         }
-    }, [profile, lastUpdated, fines.length]);
+    }, [profile, fines.length]); // Keep fines.length to allow initial load check, but it's okay now because we don't clear in useEffect
 
     const fetchStudents = useCallback(async () => {
         if (!profile) return;
-        if (students.length > 0) return; // Basic cache for students
+        const now = Date.now();
+        const isNewUser = cacheRef.current.userId !== profile.id;
+
+        if (!isNewUser && students.length > 0 && now - cacheRef.current.lastStudentsUpdate < 300000) return;
 
         try {
             const { data, count } = await supabase
@@ -79,24 +102,49 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 .order('full_name');
             setStudents(data || []);
             setTotalStudents(count || (data?.length || 0));
+            cacheRef.current.lastStudentsUpdate = Date.now();
+            cacheRef.current.userId = profile.id;
         } catch (error) {
             console.error('Error fetching students:', error);
         }
     }, [profile, students.length]);
 
     const refreshFines = async () => {
-        setLastUpdated(null); // Force refresh
+        cacheRef.current.lastFinesUpdate = 0; // Force refresh
         await fetchFines();
     };
 
     const refreshStudents = async () => {
-        setStudents([]); // Force refresh
+        setStudents([]);
+        cacheRef.current.lastStudentsUpdate = 0; // Force refresh
         await fetchStudents();
+    };
+
+    const addDescriptionOption = (option: string) => {
+        if (!option.trim()) return;
+        if (typeof window === 'undefined') return;
+
+        const stored = window.localStorage.getItem(DESCRIPTION_STORAGE_KEY);
+        let current: string[] = [];
+        if (stored) {
+            try { current = JSON.parse(stored); } catch (e) { }
+        }
+        if (!current.includes(option.trim())) {
+            const updated = [...current, option.trim()];
+            window.localStorage.setItem(DESCRIPTION_STORAGE_KEY, JSON.stringify(updated));
+            setDescriptionOptions(prev => Array.from(new Set([...prev, option.trim()])));
+        }
     };
 
     useEffect(() => {
         if (profile) {
-            setLoading(true);
+            const isNewUser = cacheRef.current.userId !== profile.id;
+            if (isNewUser) {
+                setFines([]);
+                setStudents([]);
+                setLoading(true);
+            }
+
             Promise.all([fetchFines(), fetchStudents()]).finally(() => {
                 setLoading(false);
             });
@@ -105,6 +153,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             setStudents([]);
             setTotalStudents(0);
             setLoading(false);
+            cacheRef.current.userId = null;
         }
     }, [profile, fetchFines, fetchStudents]);
 
@@ -117,7 +166,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             loading,
             refreshFines,
             refreshStudents,
-            lastUpdated
+            lastUpdated,
+            addDescriptionOption
         }}>
             {children}
         </DataContext.Provider>
