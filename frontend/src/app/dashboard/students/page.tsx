@@ -1,54 +1,76 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Profile } from '@/types';
-import { FiSearch, FiUsers, FiAlertCircle } from 'react-icons/fi';
+import { useAuth } from '@/context/AuthContext';
+import { useData } from '@/context/DataContext';
+import { FiSearch, FiUsers, FiAlertCircle, FiPlus, FiX, FiSave, FiEye } from 'react-icons/fi';
+import { format } from 'date-fns';
 
 export default function StudentsPage() {
-    const [students, setStudents] = useState<Profile[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { profile } = useAuth();
+    const { students, fines: allFines, loading, refreshFines, descriptionOptions } = useData();
+
     const [search, setSearch] = useState('');
-    const [finesCounts, setFinesCounts] = useState<Record<string, { total: number; unpaid: number }>>({});
+    const [showAddFineModal, setShowAddFineModal] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
+    const [fineDescription, setFineDescription] = useState('');
+    const [fineAmount, setFineAmount] = useState(0);
+    const [savingFine, setSavingFine] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
+    const [showViewFinesModal, setShowViewFinesModal] = useState(false);
 
-    useEffect(() => {
-        fetchStudents();
-    }, []);
+    const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
 
-    const fetchStudents = async () => {
-        setLoading(true);
-        const { data } = await supabase
-            .from('profiles')
-            .select('*, organization:organizations(name)')
-            .eq('role', 'student')
-            .order('full_name');
-        const list = data || [];
-        setStudents(list);
-
-        // Fetch fine counts per student
-        if (list.length > 0) {
-            const ids = list.map(s => s.id);
-            const { data: finesData } = await supabase
-                .from('fines')
-                .select('student_id, status')
-                .in('student_id', ids);
-
-            const counts: Record<string, { total: number; unpaid: number }> = {};
-            (finesData || []).forEach(f => {
-                if (!counts[f.student_id]) counts[f.student_id] = { total: 0, unpaid: 0 };
-                counts[f.student_id].total++;
-                if (f.status === 'unpaid') counts[f.student_id].unpaid++;
-            });
-            setFinesCounts(counts);
+    const finesCounts = (allFines || []).reduce((acc: Record<string, { total: number; unpaid: number }>, f: any) => {
+        const issuerOrg = f.issuer?.organization_id;
+        if (profile?.role !== 'admin' && issuerOrg !== profile?.organization_id) {
+            return acc;
         }
-        setLoading(false);
-    };
+        const sid = f.student_id;
+        if (!acc[sid]) acc[sid] = { total: 0, unpaid: 0 };
+        acc[sid].total++;
+        if (f.status === 'unpaid') acc[sid].unpaid++;
+        return acc;
+    }, {});
 
-    const filtered = students.filter(s =>
+    const filtered = (students || []).filter(s =>
         search === '' ||
         s.full_name.toLowerCase().includes(search.toLowerCase()) ||
         s.student_id_number?.toLowerCase().includes(search.toLowerCase())
     );
+
+    const handleSaveFine = async () => {
+        if (!profile?.id || !selectedStudent || !fineDescription.trim() || fineAmount <= 0) return;
+        setSavingFine(true);
+        setError(null);
+        try {
+            const { error: insertError } = await supabase.from('fines').insert({
+                student_id: selectedStudent.id,
+                amount: fineAmount,
+                description: fineDescription.trim(),
+                status: 'unpaid',
+                issued_by: profile.id,
+            });
+            if (insertError) throw insertError;
+            setSuccess(`Fine added for ${selectedStudent.full_name}.`);
+            setShowAddFineModal(false);
+            refreshFines();
+            setTimeout(() => setSuccess(null), 3000);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setSavingFine(false);
+        }
+    };
+
+    const studentFines = (allFines || []).filter(f => {
+        const matchesStudent = f.student_id === selectedStudent?.id;
+        const matchesOrg = profile?.role === 'admin' || (f.issuer as any)?.organization_id === profile?.organization_id;
+        return matchesStudent && matchesOrg;
+    });
 
     return (
         <div>
@@ -63,37 +85,30 @@ export default function StudentsPage() {
                 <div className="search-bar">
                     <FiSearch size={16} />
                     <input
-                        id="student-search"
                         type="text"
-                        placeholder="Search by name or ID number…"
+                        placeholder="Search students..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                     />
                 </div>
             </div>
 
+            {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
+
             <div className="table-container">
-                <div className="table-header">
-                    <span className="table-title">Student List</span>
-                    <span className="text-sm text-muted">{filtered.length} student{filtered.length !== 1 ? 's' : ''}</span>
-                </div>
                 <div className="table-wrapper">
-                    {loading ? (
-                        <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading…</div>
+                    {loading && students.length === 0 ? (
+                        <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>
                     ) : filtered.length === 0 ? (
-                        <div className="empty-state">
-                            <FiUsers />
-                            <h4>No students found</h4>
-                            <p>Try adjusting your search.</p>
-                        </div>
+                        <div className="empty-state"><h4>No students found</h4></div>
                     ) : (
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>ID Number</th>
-                                    <th>Total Fines</th>
-                                    <th>Status</th>
+                                    <th>Student</th>
+                                    <th>Course/Year</th>
+                                    <th>Fines Status</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -102,29 +117,45 @@ export default function StudentsPage() {
                                     return (
                                         <tr key={s.id}>
                                             <td>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                    <div style={{
-                                                        width: 34, height: 34, borderRadius: '50%',
-                                                        background: 'var(--color-primary-100)',
-                                                        color: 'var(--color-primary)',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        fontWeight: 700, fontSize: 13, flexShrink: 0
-                                                    }}>
-                                                        {s.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                                                <div className="flex align-center gap-sm">
+                                                    <div className="avatar-sm initials">
+                                                        {s.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                                                     </div>
-                                                    <span style={{ fontWeight: 600 }}>{s.full_name}</span>
+                                                    <div>
+                                                        <p style={{ fontWeight: 600 }}>{s.full_name}</p>
+                                                        <p className="text-sm text-muted">{s.student_id_number || 'No ID'}</p>
+                                                    </div>
                                                 </div>
                                             </td>
-                                            <td className="text-muted">{s.student_id_number || '—'}</td>
-                                            <td>{counts.total}</td>
+                                            <td><p className="text-sm">{s.course || 'N/A'}</p><p className="text-xs text-muted">Year {s.year_level || '-'}</p></td>
                                             <td>
-                                                {counts.unpaid > 0 ? (
-                                                    <span className="badge badge-unpaid">
-                                                        <FiAlertCircle size={11} /> {counts.unpaid} unpaid
-                                                    </span>
+                                                {counts.total === 0 ? (
+                                                    <span className="text-sm text-muted">No fines</span>
                                                 ) : (
-                                                    <span className="badge badge-paid">✓ Clear</span>
+                                                    <div className="flex-col gap-xs">
+                                                        <span className={`badge ${counts.unpaid > 0 ? 'badge-unpaid' : 'badge-paid'}`} style={{ width: 'fit-content' }}>
+                                                            {counts.unpaid} Unpaid / {counts.total} Total
+                                                        </span>
+                                                    </div>
                                                 )}
+                                            </td>
+                                            <td>
+                                                <div className="flex gap-xs">
+                                                    <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedStudent(s); setShowViewFinesModal(true); }}>
+                                                        <FiEye size={14} /> View
+                                                    </button>
+                                                    {profile?.role !== 'student' && (
+                                                        <button className="btn btn-sm btn-primary" onClick={() => {
+                                                            setSelectedStudent(s);
+                                                            const last = typeof window !== 'undefined' ? window.localStorage.getItem(LAST_DESCRIPTION_STORAGE_KEY) || '' : '';
+                                                            setFineDescription(last);
+                                                            setFineAmount(0);
+                                                            setShowAddFineModal(true);
+                                                        }}>
+                                                            <FiPlus size={14} /> Fine
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -134,6 +165,66 @@ export default function StudentsPage() {
                     )}
                 </div>
             </div>
+
+            {/* View Fines Modal */}
+            {showViewFinesModal && selectedStudent && (
+                <div className="modal-overlay" onClick={() => setShowViewFinesModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
+                        <div className="modal-header">
+                            <div><h3>{selectedStudent.full_name}'s Fines</h3><p className="text-sm text-muted">{selectedStudent.student_id_number}</p></div>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowViewFinesModal(false)}><FiX size={18} /></button>
+                        </div>
+                        <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                            {studentFines.length === 0 ? (
+                                <p className="text-center p-md text-muted">No fines issued by your organization (or system-wide).</p>
+                            ) : (
+                                <div className="flex-col gap-sm">
+                                    {studentFines.map(f => (
+                                        <div key={f.id} className="flex-between p-sm card" style={{ background: 'var(--color-bg-alt)' }}>
+                                            <div>
+                                                <p style={{ fontWeight: 600 }}>{f.description}</p>
+                                                <p className="text-xs text-muted">{format(new Date(f.created_at), 'MMM d, yyyy')}</p>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <p style={{ fontWeight: 700, color: f.status === 'unpaid' ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                                                    ₱{Number(f.amount).toFixed(2)}
+                                                </p>
+                                                <span className={`badge badge-${f.status}`} style={{ fontSize: 10 }}>{f.status.toUpperCase()}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer"><button className="btn btn-primary" onClick={() => setShowViewFinesModal(false)}>Close</button></div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Fine Modal */}
+            {showAddFineModal && selectedStudent && (
+                <div className="modal-overlay" onClick={() => setShowAddFineModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header"><h3>Issue Fine: {selectedStudent.full_name}</h3><button className="btn btn-icon btn-ghost" onClick={() => setShowAddFineModal(false)}><FiX size={18} /></button></div>
+                        <div className="modal-body">
+                            {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
+                            <div className="form-group"><label className="form-label">Description</label>
+                                <select className="form-control" value={fineDescription} onChange={e => {
+                                    setFineDescription(e.target.value);
+                                    if (e.target.value) window.localStorage.setItem(LAST_DESCRIPTION_STORAGE_KEY, e.target.value);
+                                }}>
+                                    <option value="">Select description...</option>
+                                    {descriptionOptions.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group"><label className="form-label">Amount (₱)</label>
+                                <input type="number" className="form-control" value={fineAmount || ''} onChange={e => setFineAmount(parseFloat(e.target.value) || 0)} />
+                            </div>
+                        </div>
+                        <div className="modal-footer"><button className="btn btn-ghost" onClick={() => setShowAddFineModal(false)}>Cancel</button><button className="btn btn-primary" onClick={handleSaveFine} disabled={savingFine}>{savingFine ? 'Saving...' : 'Add Fine'}</button></div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

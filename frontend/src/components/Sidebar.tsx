@@ -25,13 +25,13 @@ const navItems: NavItem[] = [
     },
     {
         href: '/dashboard/fines',
-        icon: <FiDollarSign size={18} />,
+        icon: <span style={{ fontSize: 18, fontWeight: 'bold' }}></span>,
         label: 'My Fines',
         roles: ['student'],
     },
     {
         href: '/dashboard/fines',
-        icon: <FiDollarSign size={18} />,
+        icon: <span style={{ fontSize: 18, fontWeight: 'bold' }}></span>,
         label: 'Manage Fines',
         roles: ['admin', 'ncssc', 'college_org', 'sub_org'],
     },

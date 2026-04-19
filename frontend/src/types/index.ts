@@ -16,6 +16,8 @@ export interface Profile {
     organization_id?: string;
     organization?: Organization;
     email?: string;
+    course?: string;
+    year_level?: string;
 }
 
 export interface Fine {

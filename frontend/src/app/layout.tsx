@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { DataProvider } from "@/context/DataContext";
 
 export const metadata: Metadata = {
   title: "NVSU Fines System",
@@ -13,7 +14,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <AuthProvider>
-          {children}
+          <DataProvider>
+            {children}
+          </DataProvider>
         </AuthProvider>
       </body>
     </html>
