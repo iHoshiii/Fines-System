@@ -202,6 +202,28 @@ def update_user(user_id: str, data: ProfileUpdate, profile=Depends(require_manag
     if not resp.data:
         raise HTTPException(status_code=404, detail="User not found.")
     return resp.data[0]
+    
+@app.put("/profile", tags=["Users"])
+def update_own_profile(data: ProfileUpdate, profile=Depends(get_profile)):
+    """Allows users to update their own profile information."""
+    update_data = data.model_dump(exclude_none=True)
+    
+    # Restrict what users can update themselves
+    safe_data = {}
+    if "full_name" in update_data:
+        safe_data["full_name"] = update_data["full_name"]
+    
+    # Only students can set their ID number
+    if "student_id_number" in update_data and profile["role"] == "student":
+        safe_data["student_id_number"] = update_data["student_id_number"]
+         
+    if not safe_data:
+        raise HTTPException(status_code=400, detail="No update provided or field not allowed.")
+
+    resp = supabase.table("profiles").update(safe_data).eq("id", profile["id"]).execute()
+    if not resp.data:
+        raise HTTPException(status_code=400, detail="Failed to update profile.")
+    return resp.data[0]
 
 # ─── Reports ──────────────────────────────────────────────────
 
