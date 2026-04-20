@@ -1073,3 +1073,43 @@ tbody tr:hover {
 .mb-md {
   margin-bottom: var(--space-md);
 }
+/* ============================================================
+   TABS
+   ============================================================ */
+.tabs-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.tabs-list {
+  display: flex;
+  gap: var(--space-xs);
+  padding: 4px;
+  background: var(--color-border);
+  border-radius: var(--radius-md);
+  width: fit-content;
+}
+
+.tab-trigger {
+  padding: 8px 24px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.tab-trigger:hover {
+  color: var(--color-primary);
+}
+
+.tab-trigger.active {
+  background: var(--color-bg-card);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-card {
+  max-width: 600px;
+}
