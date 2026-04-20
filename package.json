@@ -2,9 +2,9 @@
     "name": "fines-system-root",
     "private": true,
     "scripts": {
-        "dev:frontend": "npm --prefix frontend run dev",
-        "dev:backend": "python backend/main.py",
         "dev": "npm --prefix frontend run dev",
+        "dev:frontend": "npm --prefix frontend run dev",
+        "dev:backend": "uvicorn main:app --app-dir backend --reload",
         "install:all": "npm install --prefix frontend && pip install -r backend/requirements.txt"
     }
 }
