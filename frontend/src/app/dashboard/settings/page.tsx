@@ -7,7 +7,7 @@ import {
     FiUser, FiShield, FiCheckCircle, FiAlertCircle,
     FiLock, FiMail, FiHash, FiGrid, FiArrowRight
 } from 'react-icons/fi';
-import axios from 'axios';
+
 
 export default function SettingsPage() {
     const { profile, user, refreshProfile } = useAuth();
@@ -26,19 +26,22 @@ export default function SettingsPage() {
         setLoading(true);
         setMessage(null);
         try {
-            const token = (await supabase.auth.getSession()).data.session?.access_token;
-            await axios.put(
-                `${process.env.NEXT_PUBLIC_API_URL}/profile`,
-                {
-                    full_name: fullName,
-                    student_id_number: profile?.role === 'student' ? studentId : undefined,
-                },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const updateData: Record<string, string> = { full_name: fullName };
+            if (profile?.role === 'student') {
+                updateData.student_id_number = studentId;
+            }
+
+            const { error } = await supabase
+                .from('profiles')
+                .update(updateData)
+                .eq('id', profile!.id);
+
+            if (error) throw error;
+
             await refreshProfile();
             setMessage({ type: 'success', text: 'Profile changes saved successfully!' });
         } catch (error: any) {
-            setMessage({ type: 'error', text: error.response?.data?.detail || 'Failed to update profile.' });
+            setMessage({ type: 'error', text: error.message || 'Failed to update profile.' });
         } finally {
             setLoading(false);
         }
@@ -243,7 +246,8 @@ export default function SettingsPage() {
                 <div className="card shadow-md" style={{ borderTop: '4px solid var(--color-accent)' }}>
                     <div className="flex-center" style={{ justifyContent: 'flex-start', gap: 12, marginBottom: 'var(--space-lg)' }}>
                         <div className="stat-icon gold" style={{ width: 40, height: 40 }}><FiLock size={20} /></div>
-                        <h3 style={{ fontSize: 18, fontWeight: 700 }}>Security & Credentials</h3>
+                        <h3 style={{ fontSize: 18, fontWeight: 700 }}>Security
+                        </h3>
                     </div>
 
                     <form onSubmit={handleUpdatePassword} className="flex-col gap-md">
@@ -312,7 +316,7 @@ export default function SettingsPage() {
                         display: 'flex',
                         gap: 12
                     }}>
-                        <FiMail className="text-primary" style={{ shrink: 0, marginTop: 4 }} />
+                        <FiMail className="text-primary" style={{ flexShrink: 0, marginTop: 4 }} />
                         <div>
                             <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary-dark)', margin: 0 }}>Registered Email</p>
                             <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: 0 }}>{user?.email}</p>

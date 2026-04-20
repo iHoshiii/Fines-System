@@ -1,8 +1,3 @@
--- ============================================================
--- NVSU FINES SYSTEM — SUPABASE SQL SCHEMA
--- Run this in your Supabase SQL Editor
--- ============================================================
-
 -- 1. ORGANIZATIONS TABLE
 CREATE TABLE IF NOT EXISTS organizations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
