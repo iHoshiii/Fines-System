@@ -2,9 +2,12 @@
     "name": "fines-system-root",
     "private": true,
     "scripts": {
-        "dev": "npm --prefix frontend run dev",
+        "dev": "concurrently --names \"FRONTEND,BACKEND\" --prefix-colors \"green,yellow\" \"npm --prefix frontend run dev\" \".venv\\Scripts\\uvicorn main:app --app-dir backend --port 8000 --reload\"",
         "dev:frontend": "npm --prefix frontend run dev",
         "dev:backend": ".venv\\Scripts\\uvicorn main:app --app-dir backend --port 8000 --reload",
-        "install:all": "npm install --prefix frontend && pip install -r backend/requirements.txt"
+        "install:all": "npm install --prefix frontend && .venv\\Scripts\\pip install -r backend/requirements.txt"
+    },
+    "devDependencies": {
+        "concurrently": "^9.1.2"
     }
 }
