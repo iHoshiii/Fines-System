@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { supabase } from '@/lib/supabaseClient';
-import { FiDollarSign, FiCheckCircle, FiAlertCircle, FiUsers, FiEye, FiX, FiPlus } from 'react-icons/fi';
+import { FiCheckCircle, FiAlertCircle, FiUsers, FiEye, FiX, FiPlus } from 'react-icons/fi';
 import { format } from 'date-fns';
 
 export default function AdminDashboard() {
@@ -14,13 +14,15 @@ export default function AdminDashboard() {
     const [showModal, setShowModal] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showDescModal, setShowDescModal] = useState(false);
+    const [showPayModal, setShowPayModal] = useState(false);
     const [newDesc, setNewDesc] = useState('');
     const [isCustomDesc, setIsCustomDesc] = useState(false);
     const [fineDescription, setFineDescription] = useState('');
     const [fineAmount, setFineAmount] = useState(0);
     const [saving, setSaving] = useState(false);
-
-    const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
+    const [updatingPayment, setUpdatingPayment] = useState(false);
+    const [payStatus, setPayStatus] = useState<'paid' | 'unpaid'>('paid');
+    const [selectedFineIds, setSelectedFineIds] = useState<string[]>([]);
 
     const handleAddDescription = () => {
         if (!newDesc.trim()) return;
@@ -78,6 +80,36 @@ export default function AdminDashboard() {
     const displayFines = Object.values(groupedFines);
     const unpaidFines = (fines || []).filter((f: any) => f.status === 'unpaid');
     const paidFines = (fines || []).filter((f: any) => f.status === 'paid');
+    const selectedStudentFines = (fines || []).filter((f: any) => f.student_id === selectedStudent?.id);
+
+    const openPayModal = (studentSummary: any) => {
+        setSelectedStudent(studentSummary);
+        setSelectedFineIds([]);
+        setPayStatus('paid');
+        setShowPayModal(true);
+    };
+
+    const toggleFineSelection = (fineId: string, checked: boolean) => {
+        setSelectedFineIds(prev => checked ? [...prev, fineId] : prev.filter(id => id !== fineId));
+    };
+
+    const applyFineStatus = async () => {
+        if (selectedFineIds.length === 0) return;
+        setUpdatingPayment(true);
+        try {
+            const { error } = await supabase
+                .from('fines')
+                .update({ status: payStatus })
+                .in('id', selectedFineIds);
+            if (error) throw error;
+            await refreshFines();
+            setShowPayModal(false);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setUpdatingPayment(false);
+        }
+    };
 
     const greetingTime = () => {
         const h = new Date().getHours();
@@ -106,9 +138,9 @@ export default function AdminDashboard() {
                 ) : (
                     <>
                         <div className="stat-card">
-                            <div className="stat-icon green"><FiDollarSign size={22} /></div>
+                            <div className="stat-icon green" style={{ fontSize: 22, fontWeight: 800 }}>₱</div>
                             <div className="stat-info">
-                                <p>Total System Fines</p>
+                                <p>Total Fines</p>
                                 <h3>{(fines || []).length}</h3>
                             </div>
                         </div>
@@ -195,6 +227,9 @@ export default function AdminDashboard() {
                                                 }}>
                                                     <FiPlus size={14} /> Fine
                                                 </button>
+                                                <button className="btn btn-sm btn-ghost" onClick={() => openPayModal(summary)}>
+                                                    Pay Fines
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -246,6 +281,77 @@ export default function AdminDashboard() {
                                 </h4>
                             </div>
                             <button className="btn btn-primary" onClick={() => setShowModal(false)}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Pay Fines Modal */}
+            {showPayModal && selectedStudent && (
+                <div className="modal-overlay" onClick={() => setShowPayModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 700 }}>
+                        <div className="modal-header">
+                            <div>
+                                <h3>Pay Fines: {selectedStudent.student?.full_name}</h3>
+                                <p className="text-sm text-muted">Select one or more fines and set the status.</p>
+                            </div>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowPayModal(false)}>
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                            <div className="flex-between" style={{ marginBottom: 12 }}>
+                                <div className="flex gap-sm">
+                                    <button className={`btn btn-sm ${payStatus === 'paid' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setPayStatus('paid')}>
+                                        Mark as Paid
+                                    </button>
+                                    <button className={`btn btn-sm ${payStatus === 'unpaid' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setPayStatus('unpaid')}>
+                                        Mark as Unpaid
+                                    </button>
+                                </div>
+                                <button
+                                    className="btn btn-sm btn-ghost"
+                                    onClick={() => setSelectedFineIds(
+                                        selectedFineIds.length === selectedStudentFines.length
+                                            ? []
+                                            : selectedStudentFines.map((f: any) => f.id)
+                                    )}
+                                >
+                                    {selectedFineIds.length === selectedStudentFines.length ? 'Clear All' : 'Select All'}
+                                </button>
+                            </div>
+
+                            {selectedStudentFines.length === 0 ? (
+                                <p className="text-muted text-center">No fines found for this student.</p>
+                            ) : (
+                                <div className="flex-col gap-sm">
+                                    {selectedStudentFines.map((fine: any) => (
+                                        <label key={fine.id} className="card flex-between" style={{ padding: 12, cursor: 'pointer' }}>
+                                            <div className="flex gap-sm align-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedFineIds.includes(fine.id)}
+                                                    onChange={e => toggleFineSelection(fine.id, e.target.checked)}
+                                                />
+                                                <div>
+                                                    <p style={{ fontWeight: 600 }}>{fine.description}</p>
+                                                    <p className="text-xs text-muted">{format(new Date(fine.created_at), 'MMM d, yyyy')}</p>
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <p style={{ fontWeight: 700 }}>₱{Number(fine.amount).toFixed(2)}</p>
+                                                <span className={`badge badge-${fine.status}`} style={{ fontSize: 10 }}>{fine.status.toUpperCase()}</span>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowPayModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={applyFineStatus} disabled={selectedFineIds.length === 0 || updatingPayment}>
+                                {updatingPayment ? 'Updating...' : `Apply to ${selectedFineIds.length} Fine(s)`}
+                            </button>
                         </div>
                     </div>
                 </div>
