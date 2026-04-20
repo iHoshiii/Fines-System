@@ -127,6 +127,47 @@ export default function FinesPage() {
         return matchStatus && matchSearch;
     });
 
+    const renderTableSkeleton = (rows = 6) => (
+        <table aria-hidden="true">
+            <thead>
+                <tr>
+                    {!isStudent && <th>Student</th>}
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    {!isStudent && <th>Actions</th>}
+                </tr>
+            </thead>
+            <tbody>
+                {Array.from({ length: rows }).map((_, idx) => (
+                    <tr key={`skeleton-${idx}`}>
+                        {!isStudent && (
+                            <td>
+                                <div className="flex-col gap-xs">
+                                    <div className="skeleton" style={{ width: 140, height: 12 }} />
+                                    <div className="skeleton" style={{ width: 90, height: 10 }} />
+                                </div>
+                            </td>
+                        )}
+                        <td><div className="skeleton" style={{ width: '85%', height: 12 }} /></td>
+                        <td><div className="skeleton" style={{ width: 70, height: 12 }} /></td>
+                        <td><div className="skeleton" style={{ width: 80, height: 20, borderRadius: 999 }} /></td>
+                        <td><div className="skeleton" style={{ width: 90, height: 12 }} /></td>
+                        {!isStudent && (
+                            <td>
+                                <div className="flex gap-xs">
+                                    <div className="skeleton" style={{ width: 28, height: 28, borderRadius: 'var(--radius-sm)' }} />
+                                    <div className="skeleton" style={{ width: 28, height: 28, borderRadius: 'var(--radius-sm)' }} />
+                                </div>
+                            </td>
+                        )}
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
+
     return (
         <div>
             <div className="page-header">
@@ -178,7 +219,7 @@ export default function FinesPage() {
             <div className="table-container">
                 <div className="table-wrapper">
                     {loading && fines.length === 0 ? (
-                        <div className="p-xl text-center">Loading...</div>
+                        renderTableSkeleton()
                     ) : filteredFines.length === 0 ? (
                         <div className="empty-state">
                             <h4>No fines found</h4>
