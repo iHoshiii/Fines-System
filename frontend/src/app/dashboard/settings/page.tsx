@@ -11,7 +11,9 @@ import {
 
 export default function SettingsPage() {
     const { profile, user, refreshProfile } = useAuth();
-    const [loading, setLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
+    const [savingProfile, setSavingProfile] = useState(false);
+    const [savingSecurity, setSavingSecurity] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     // Form States
@@ -26,7 +28,7 @@ export default function SettingsPage() {
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
+        setSavingProfile(true);
         setMessage(null);
         try {
             const updateData: Record<string, string> = { full_name: fullName };
@@ -49,7 +51,7 @@ export default function SettingsPage() {
         } catch (error: any) {
             setMessage({ type: 'error', text: error.message || 'Failed to update profile.' });
         } finally {
-            setLoading(false);
+            setSavingProfile(false);
         }
     };
 
@@ -59,7 +61,7 @@ export default function SettingsPage() {
             setMessage({ type: 'error', text: 'New passwords do not match.' });
             return;
         }
-        setLoading(true);
+        setSavingSecurity(true);
         setMessage(null);
         try {
             const { error: authError } = await supabase.auth.signInWithPassword({
@@ -76,13 +78,13 @@ export default function SettingsPage() {
         } catch (error: any) {
             setMessage({ type: 'error', text: error.message || 'Verification failed.' });
         } finally {
-            setLoading(false);
+            setSavingSecurity(false);
         }
     };
 
     const handleForgotPassword = async () => {
         if (!user?.email) return;
-        setLoading(true);
+        setSavingSecurity(true);
         setMessage(null);
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
@@ -93,7 +95,7 @@ export default function SettingsPage() {
         } catch (error: any) {
             setMessage({ type: 'error', text: error.message || 'Service unavailable.' });
         } finally {
-            setLoading(false);
+            setSavingSecurity(false);
         }
     };
 
@@ -161,104 +163,109 @@ export default function SettingsPage() {
                 </div>
             )}
 
-            {/* 2. Content Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: 'var(--space-lg)' }}>
+            {/* Tabs Header */}
+            <div className="flex gap-sm" style={{ marginBottom: 'var(--space-lg)', borderBottom: '1px solid var(--color-border)' }}>
+                <button
+                    className={`btn ${activeTab === 'profile' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => { setActiveTab('profile'); setMessage(null); }}
+                    style={{ borderRadius: 'var(--radius-md) var(--radius-md) 0 0' }}
+                >
+                    <FiUser size={16} /> Profile
+                </button>
+                <button
+                    className={`btn ${activeTab === 'security' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => { setActiveTab('security'); setMessage(null); }}
+                    style={{ borderRadius: 'var(--radius-md) var(--radius-md) 0 0' }}
+                >
+                    <FiShield size={16} /> Security
+                </button>
+            </div>
 
+            {/* 2. Content Container */}
+            <div>
                 {/* Profile Section */}
-                <div className="card shadow-md" style={{ borderTop: '4px solid var(--color-primary)' }}>
-                    <div className="flex-center" style={{ justifyContent: 'flex-start', gap: 12, marginBottom: 'var(--space-lg)' }}>
-                        <div className="stat-icon green" style={{ width: 40, height: 40 }}><FiUser size={20} /></div>
-                        <h3 style={{ fontSize: 18, fontWeight: 700 }}>Profile Information</h3>
-                    </div>
-
-                    <form onSubmit={handleUpdateProfile} className="flex-col gap-md">
-                        <div className="form-group">
-                            <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Full Legal Name</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                value={fullName}
-                                onChange={(e) => setFullName(e.target.value)}
-                                required
-                                placeholder="Enter your full name"
-                            />
+                {activeTab === 'profile' && (
+                    <div className="card shadow-md" style={{ borderTop: '4px solid var(--color-primary)', animation: 'fadeIn 0.3s' }}>
+                        <div className="flex-center" style={{ justifyContent: 'flex-start', gap: 12, marginBottom: 'var(--space-lg)' }}>
+                            <div className="stat-icon green" style={{ width: 40, height: 40 }}><FiUser size={20} /></div>
+                            <h3 style={{ fontSize: 18, fontWeight: 700 }}>Profile Information</h3>
                         </div>
 
-                        {profile.role === 'student' && (
-                            <div className="form-col gap-md">
-                                <div className="form-group">
-                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Student ID Number</label>
-                                    <div className="search-bar" style={{ borderRadius: 'var(--radius-md)', padding: '0 14px', background: 'var(--color-bg)' }}>
-                                        <FiHash size={14} />
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            style={{ border: 'none', boxShadow: 'none' }}
-                                            placeholder="e.g. 2021-0001"
-                                            value={studentId}
-                                            onChange={(e) => setStudentId(e.target.value)}
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                                <div className="form-grid">
-                                    <div className="form-group">
-                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>College</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            placeholder="e.g. CITE"
-                                            value={college}
-                                            onChange={(e) => setCollege(e.target.value)}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Course</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            placeholder="e.g. BSCS"
-                                            value={course}
-                                            onChange={(e) => setCourse(e.target.value)}
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Year and Section</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        placeholder="e.g. 3A"
-                                        value={yearSection}
-                                        onChange={(e) => setYearSection(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="form-grid">
+                        <form onSubmit={handleUpdateProfile} className="flex-col gap-md">
                             <div className="form-group">
-                                <label className="form-label">Account Role</label>
-                                <div className="flex-center" style={{
-                                    justifyContent: 'flex-start',
-                                    gap: 8,
-                                    padding: '10px 14px',
-                                    background: 'var(--color-bg)',
-                                    borderRadius: 'var(--radius-md)',
-                                    fontSize: 13,
-                                    color: 'var(--color-text-secondary)',
-                                    border: '1px solid var(--color-border)'
-                                }}>
-                                    <FiShield size={14} />
-                                    {profile.role.replace('_', ' ').toUpperCase()}
-                                </div>
+                                <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Full Legal Name</label>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={fullName}
+                                    onChange={(e) => setFullName(e.target.value)}
+                                    required
+                                    placeholder="Enter your full name"
+                                    disabled={profile.role === 'student'}
+                                />
+                                {profile.role === 'student' && <p className="text-xs text-muted mt-xs">Contact Admin for approval to change Name.</p>}
                             </div>
-                            {profile.organization && (
+
+                            {profile.role === 'student' && (
+                                <div className="form-col gap-md">
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Student ID Number</label>
+                                        <div className="search-bar" style={{ borderRadius: 'var(--radius-md)', padding: '0 14px', background: 'var(--color-bg)' }}>
+                                            <FiHash size={14} />
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                style={{ border: 'none', boxShadow: 'none' }}
+                                                placeholder="e.g. 2021-0001"
+                                                value={studentId}
+                                                onChange={(e) => setStudentId(e.target.value)}
+                                                required
+                                                disabled
+                                            />
+                                        </div>
+                                        <p className="text-xs text-muted mt-xs">Contact Admin for approval to change ID Number.</p>
+                                    </div>
+                                    <div className="form-grid">
+                                        <div className="form-group">
+                                            <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>College</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="e.g. CITE"
+                                                value={college}
+                                                onChange={(e) => setCollege(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Course</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="e.g. BSCS"
+                                                value={course}
+                                                onChange={(e) => setCourse(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Year and Section</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="e.g. 3A"
+                                            value={yearSection}
+                                            onChange={(e) => setYearSection(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="form-grid">
                                 <div className="form-group">
-                                    <label className="form-label">Affiliation</label>
+                                    <label className="form-label">Account Role</label>
                                     <div className="flex-center" style={{
                                         justifyContent: 'flex-start',
                                         gap: 8,
@@ -269,104 +276,124 @@ export default function SettingsPage() {
                                         color: 'var(--color-text-secondary)',
                                         border: '1px solid var(--color-border)'
                                     }}>
-                                        <FiGrid size={14} />
-                                        {profile.organization.name}
+                                        <FiShield size={14} />
+                                        {profile.role.replace('_', ' ').toUpperCase()}
                                     </div>
                                 </div>
-                            )}
-                        </div>
+                                {profile.organization && (
+                                    <div className="form-group">
+                                        <label className="form-label">Affiliation</label>
+                                        <div className="flex-center" style={{
+                                            justifyContent: 'flex-start',
+                                            gap: 8,
+                                            padding: '10px 14px',
+                                            background: 'var(--color-bg)',
+                                            borderRadius: 'var(--radius-md)',
+                                            fontSize: 13,
+                                            color: 'var(--color-text-secondary)',
+                                            border: '1px solid var(--color-border)'
+                                        }}>
+                                            <FiGrid size={14} />
+                                            {profile.organization.name}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
-                        <div style={{ marginTop: 'var(--space-md)' }}>
-                            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%' }} disabled={loading}>
-                                {loading ? 'Saving Changes...' : 'Update Profile'}
-                                <FiArrowRight style={{ marginLeft: 8 }} />
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                            <div style={{ marginTop: 'var(--space-md)' }}>
+                                <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%' }} disabled={savingProfile}>
+                                    {savingProfile ? 'Saving Changes...' : 'Update Profile'}
+                                    <FiArrowRight style={{ marginLeft: 8 }} />
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
 
                 {/* Security Section */}
-                <div className="card shadow-md" style={{ borderTop: '4px solid var(--color-accent)' }}>
-                    <div className="flex-center" style={{ justifyContent: 'flex-start', gap: 12, marginBottom: 'var(--space-lg)' }}>
-                        <div className="stat-icon gold" style={{ width: 40, height: 40 }}><FiLock size={20} /></div>
-                        <h3 style={{ fontSize: 18, fontWeight: 700 }}>Security
-                        </h3>
-                    </div>
-
-                    <form onSubmit={handleUpdatePassword} className="flex-col gap-md">
-                        <div className="form-group">
-                            <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Current Password</label>
-                            <input
-                                type="password"
-                                className="form-control"
-                                placeholder="Verify your current identity"
-                                value={oldPassword}
-                                onChange={(e) => setOldPassword(e.target.value)}
-                                required
-                            />
+                {activeTab === 'security' && (
+                    <div className="card shadow-md" style={{ borderTop: '4px solid var(--color-accent)', animation: 'fadeIn 0.3s' }}>
+                        <div className="flex-center" style={{ justifyContent: 'flex-start', gap: 12, marginBottom: 'var(--space-lg)' }}>
+                            <div className="stat-icon gold" style={{ width: 40, height: 40 }}><FiLock size={20} /></div>
+                            <h3 style={{ fontSize: 18, fontWeight: 700 }}>Security
+                            </h3>
                         </div>
 
-                        <div className="form-grid">
+                        <form onSubmit={handleUpdatePassword} className="flex-col gap-md">
                             <div className="form-group">
-                                <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>New Password</label>
+                                <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Current Password</label>
                                 <input
                                     type="password"
                                     className="form-control"
-                                    placeholder="Min. 6 chars"
-                                    value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    placeholder="Verify your current identity"
+                                    value={oldPassword}
+                                    onChange={(e) => setOldPassword(e.target.value)}
                                     required
                                 />
                             </div>
-                            <div className="form-group">
-                                <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Confirm Password</label>
-                                <input
-                                    type="password"
-                                    className="form-control"
-                                    placeholder="Confirm new password"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    required
-                                />
+
+                            <div className="form-grid">
+                                <div className="form-group">
+                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>New Password</label>
+                                    <input
+                                        type="password"
+                                        className="form-control"
+                                        placeholder="Min. 6 chars"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Confirm Password</label>
+                                    <input
+                                        type="password"
+                                        className="form-control"
+                                        placeholder="Confirm new password"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        required
+                                    />
+                                </div>
                             </div>
-                        </div>
 
-                        <div style={{ textAlign: 'center', margin: 'var(--space-sm) 0' }}>
-                            <button
-                                type="button"
-                                className="btn btn-ghost"
-                                style={{ border: 'none', color: 'var(--color-primary)', fontSize: 13, textDecoration: 'underline' }}
-                                onClick={handleForgotPassword}
-                                disabled={loading}
-                            >
-                                I forgot my current password
-                            </button>
-                        </div>
+                            <div style={{ textAlign: 'center', margin: 'var(--space-sm) 0' }}>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost"
+                                    style={{ border: 'none', color: 'var(--color-primary)', fontSize: 13, textDecoration: 'underline' }}
+                                    onClick={handleForgotPassword}
+                                    disabled={savingSecurity}
+                                >
+                                    I forgot my current password
+                                </button>
+                            </div>
 
-                        <div style={{ marginTop: 'var(--space-md)' }}>
-                            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', background: 'var(--color-primary-dark)' }} disabled={loading}>
-                                {loading ? 'Processing...' : 'Change Secure Password'}
-                                <FiArrowRight style={{ marginLeft: 8 }} />
-                            </button>
-                        </div>
-                    </form>
+                            <div style={{ marginTop: 'var(--space-md)' }}>
+                                <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', background: 'var(--color-primary-dark)' }} disabled={savingSecurity}>
+                                    {savingSecurity ? 'Processing...' : 'Change Secure Password'}
+                                    <FiArrowRight style={{ marginLeft: 8 }} />
+                                </button>
+                            </div>
+                        </form>
 
-                    <div style={{
-                        marginTop: 'var(--space-xl)',
-                        padding: 'var(--space-md)',
-                        background: 'var(--color-primary-50)',
-                        borderRadius: 'var(--radius-md)',
-                        display: 'flex',
-                        gap: 12
-                    }}>
-                        <FiMail className="text-primary" style={{ flexShrink: 0, marginTop: 4 }} />
-                        <div>
-                            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary-dark)', margin: 0 }}>Registered Email</p>
-                            <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: 0 }}>{user?.email}</p>
-                            <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>Contact Admin to change your official email address.</p>
+                        <div style={{
+                            marginTop: 'var(--space-xl)',
+                            padding: 'var(--space-md)',
+                            background: 'var(--color-primary-50)',
+                            borderRadius: 'var(--radius-md)',
+                            display: 'flex',
+                            gap: 12
+                        }}>
+                            <FiMail className="text-primary" style={{ flexShrink: 0, marginTop: 4 }} />
+                            <div>
+                                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary-dark)', margin: 0 }}>Registered Email</p>
+                                <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: 0 }}>{user?.email}</p>
+                                {profile.role === 'student' && <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>Contact Admin to change your official email address.</p>}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );
