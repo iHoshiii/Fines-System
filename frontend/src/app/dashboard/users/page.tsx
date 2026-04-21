@@ -24,6 +24,8 @@ export default function UsersPage() {
     const [users, setUsers] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 15;
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState<Profile | null>(null);
     const [form, setForm] = useState({ full_name: '', email: '', role: 'student' as UserRole, student_id_number: '', password: '' });
@@ -122,6 +124,29 @@ export default function UsersPage() {
         u.role.toLowerCase().includes(search.toLowerCase())
     );
 
+    const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+    const paginatedUsers = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    const pendingApprovals = users.filter(u => u.pending_full_name || u.pending_student_id);
+
+    const handleApproval = async (user: Profile, approve: boolean) => {
+        setLoading(true);
+        try {
+            const updatePayload: any = { pending_full_name: null, pending_student_id: null };
+            if (approve) {
+                if (user.pending_full_name) updatePayload.full_name = user.pending_full_name;
+                if (user.pending_student_id) updatePayload.student_id_number = user.pending_student_id;
+            }
+            await supabase.from('profiles').update(updatePayload).eq('id', user.id);
+            setSuccess(approve ? `Approved changes for ${user.full_name}` : `Rejected changes for ${user.full_name}`);
+            fetchUsers();
+            setTimeout(() => setSuccess(null), 3000);
+        } catch (e) {
+            console.error(e);
+        }
+        setLoading(false);
+    };
+
     return (
         <div>
             <div className="page-header">
@@ -139,9 +164,35 @@ export default function UsersPage() {
             <div style={{ marginBottom: 16 }}>
                 <div className="search-bar">
                     <FiSearch size={16} />
-                    <input id="user-search" type="text" placeholder="Search by name, ID, or role…" value={search} onChange={e => setSearch(e.target.value)} />
+                    <input id="user-search" type="text" placeholder="Search by name, ID, or role…" value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} />
                 </div>
             </div>
+
+            {pendingApprovals.length > 0 && (
+                <div className="card" style={{ marginBottom: 24, borderLeft: '4px solid var(--color-accent)' }}>
+                    <div className="flex-between" style={{ marginBottom: 12 }}>
+                        <h4 style={{ color: 'var(--color-primary-dark)' }}>Pending Profile Approvals</h4>
+                        <span className="badge badge-unpaid">{pendingApprovals.length} Request(s)</span>
+                    </div>
+                    <div className="flex-col gap-sm">
+                        {pendingApprovals.map(p => (
+                            <div key={p.id} className="flex-between p-sm" style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                                <div>
+                                    <p style={{ fontWeight: 600 }}>{p.full_name}</p>
+                                    <div className="text-sm text-muted mt-xs flex-col gap-xs">
+                                        {p.pending_full_name && <div><span style={{ textDecoration: 'line-through' }}>{p.full_name}</span> → <strong style={{ color: 'var(--color-text)' }}>{p.pending_full_name}</strong></div>}
+                                        {p.pending_student_id && <div><span style={{ textDecoration: 'line-through' }}>{p.student_id_number || 'None'}</span> → <strong style={{ color: 'var(--color-text)' }}>{p.pending_student_id}</strong></div>}
+                                    </div>
+                                </div>
+                                <div className="flex gap-sm">
+                                    <button className="btn btn-sm btn-ghost" style={{ color: 'var(--color-danger)' }} onClick={() => handleApproval(p, false)}>Reject</button>
+                                    <button className="btn btn-sm btn-primary" onClick={() => handleApproval(p, true)}>Approve</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="table-container">
                 <div className="table-header">
@@ -168,7 +219,7 @@ export default function UsersPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map(u => (
+                                {paginatedUsers.map(u => (
                                     <tr key={u.id}>
                                         <td>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -198,6 +249,14 @@ export default function UsersPage() {
                     )}
                 </div>
             </div>
+
+            {totalPages > 1 && (
+                <div className="flex-center mt-md gap-sm" style={{ justifyContent: 'center', marginTop: '16px' }}>
+                    <button className="btn btn-ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</button>
+                    <span className="text-sm">Page {currentPage} of {totalPages}</span>
+                    <button className="btn btn-ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</button>
+                </div>
+            )}
 
             {showModal && (
                 <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>

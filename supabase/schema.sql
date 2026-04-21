@@ -11,8 +11,9 @@ CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'student'
-    CHECK (role IN ('admin', 'student', 'ncssc', 'college_org', 'sub_org')),
   student_id_number TEXT UNIQUE,
+  pending_full_name TEXT,
+  pending_student_id TEXT,
   email TEXT,
   college TEXT,
   course TEXT,
