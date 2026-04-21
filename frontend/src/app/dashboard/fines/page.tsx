@@ -15,6 +15,7 @@ export default function FinesPage() {
 
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
+    const [issuerFilter, setIssuerFilter] = useState<string>('all');
     const [showModal, setShowModal] = useState(false);
     const [showDescModal, setShowDescModal] = useState(false);
     const [newDesc, setNewDesc] = useState('');
@@ -157,6 +158,12 @@ export default function FinesPage() {
 
     const filteredFines = sortedFines.filter(f => {
         const matchStatus = statusFilter === 'all' || f.status === statusFilter;
+        let matchIssuer = true;
+        if (issuerFilter !== 'all') {
+            const issuerRole = (f.issuer as any)?.role;
+            matchIssuer = issuerRole === issuerFilter;
+        }
+
         const s = search.toLowerCase();
         const matchSearch = search === '' ||
             f.description.toLowerCase().includes(s) ||
@@ -165,7 +172,7 @@ export default function FinesPage() {
             (f.student as any)?.college?.toLowerCase().includes(s) ||
             (f.student as any)?.course?.toLowerCase().includes(s) ||
             (f.student as any)?.year_section?.toLowerCase().includes(s);
-        return matchStatus && matchSearch;
+        return matchStatus && matchIssuer && matchSearch;
     });
 
     const totalPages = Math.ceil(filteredFines.length / ITEMS_PER_PAGE);
@@ -203,6 +210,7 @@ export default function FinesPage() {
                 <tr>
                     {!isStudent && <th>Student</th>}
                     <th>Description</th>
+                    <th>Given by</th>
                     <th>Amount</th>
                     <th>Status</th>
                     <th>Date</th>
@@ -221,6 +229,7 @@ export default function FinesPage() {
                             </td>
                         )}
                         <td><div className="skeleton" style={{ width: '85%', height: 12 }} /></td>
+                        <td><div className="skeleton" style={{ width: 90, height: 12 }} /></td>
                         <td><div className="skeleton" style={{ width: 70, height: 12 }} /></td>
                         <td><div className="skeleton" style={{ width: 80, height: 20, borderRadius: 999 }} /></td>
                         <td><div className="skeleton" style={{ width: 90, height: 12 }} /></td>
@@ -271,6 +280,19 @@ export default function FinesPage() {
                     />
                 </div>
                 <div className="flex gap-xs">
+                    <select
+                        className="form-control"
+                        style={{ height: '32px', padding: '0 12px', fontSize: '14px', borderRadius: 'var(--radius-md)', width: 'auto' }}
+                        value={issuerFilter}
+                        onChange={e => setIssuerFilter(e.target.value)}
+                    >
+                        <option value="all">All Issuers</option>
+                        <option value="ncssc">NCSSC</option>
+                        <option value="college_org">College Org</option>
+                        <option value="sub_org">Sub Org</option>
+                        <option value="admin">Admin</option>
+                    </select>
+
                     {(['all', 'unpaid', 'paid'] as const).map(s => (
                         <button
                             key={s}
@@ -304,6 +326,7 @@ export default function FinesPage() {
                                 <tr>
                                     {!isStudent && <th>Student</th>}
                                     <th>Description</th>
+                                    <th>Given by</th>
                                     <th>Amount</th>
                                     <th>Status</th>
                                     <th>Date</th>
@@ -311,49 +334,62 @@ export default function FinesPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {paginatedFines.map(f => (
-                                    <tr key={f.id}>
-                                        {!isStudent && (
-                                            <td>
-                                                <div>
-                                                    <p style={{ fontWeight: 600 }}>{(f.student as any)?.full_name || '-'}</p>
-                                                    <p className="text-xs text-muted">{(f.student as any)?.student_id_number || ''}</p>
-                                                    <p className="text-xs text-muted">
-                                                        {(f.student as any)?.college || '—'} • {(f.student as any)?.course || '—'}
-                                                    </p>
-                                                </div>
-                                            </td>
-                                        )}
-                                        <td>{f.description}</td>
-                                        <td style={{ fontWeight: 700, color: f.status === 'unpaid' ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                                            ₱{Number(f.amount).toFixed(2)}
-                                        </td>
-                                        <td>
-                                            <span className={`badge badge-${f.status}`}>
-                                                {f.status === 'paid' ? '✓ Paid' : '✗ Unpaid'}
-                                            </span>
-                                        </td>
-                                        <td className="text-sm text-muted">
-                                            {format(new Date(f.created_at), 'MMM d, yyyy')}
-                                        </td>
-                                        {!isStudent && (
-                                            <td>
-                                                {(profile?.role === 'admin' || f.issued_by === profile?.id) ? (
-                                                    <div className="flex gap-xs">
-                                                        <button className="btn btn-icon btn-ghost" onClick={() => openEditModal(f)}>
-                                                            <FiEdit2 size={14} />
-                                                        </button>
-                                                        <button className="btn btn-icon btn-danger" onClick={() => handleDelete(f.id)}>
-                                                            <FiTrash2 size={14} />
-                                                        </button>
+                                {paginatedFines.map(f => {
+                                    const issuerRole = (f.issuer as any)?.role;
+                                    let roleDisplay = issuerRole;
+                                    if (issuerRole === 'ncssc') roleDisplay = 'NCSSC';
+                                    if (issuerRole === 'college_org') roleDisplay = 'College Org';
+                                    if (issuerRole === 'sub_org') roleDisplay = 'Sub Org';
+                                    if (issuerRole === 'admin') roleDisplay = 'Admin';
+
+                                    return (
+                                        <tr key={f.id}>
+                                            {!isStudent && (
+                                                <td>
+                                                    <div>
+                                                        <p style={{ fontWeight: 600 }}>{(f.student as any)?.full_name || '-'}</p>
+                                                        <p className="text-xs text-muted">{(f.student as any)?.student_id_number || ''}</p>
+                                                        <p className="text-xs text-muted">
+                                                            {(f.student as any)?.college || '—'} • {(f.student as any)?.course || '—'}
+                                                        </p>
                                                     </div>
-                                                ) : (
-                                                    <span className="text-xs text-muted">View Only</span>
-                                                )}
+                                                </td>
+                                            )}
+                                            <td>{f.description}</td>
+                                            <td>
+                                                <p style={{ fontWeight: 500 }}>{(f.issuer as any)?.full_name || 'System'}</p>
+                                                {roleDisplay && <p className="text-xs text-muted mt-xs">{roleDisplay}</p>}
                                             </td>
-                                        )}
-                                    </tr>
-                                ))}
+                                            <td style={{ fontWeight: 700, color: f.status === 'unpaid' ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                                                ₱{Number(f.amount).toFixed(2)}
+                                            </td>
+                                            <td>
+                                                <span className={`badge badge-${f.status}`}>
+                                                    {f.status === 'paid' ? '✓ Paid' : '✗ Unpaid'}
+                                                </span>
+                                            </td>
+                                            <td className="text-sm text-muted">
+                                                {format(new Date(f.created_at), 'MMM d, yyyy')}
+                                            </td>
+                                            {!isStudent && (
+                                                <td>
+                                                    {(profile?.role === 'admin' || f.issued_by === profile?.id) ? (
+                                                        <div className="flex gap-xs">
+                                                            <button className="btn btn-icon btn-ghost" onClick={() => openEditModal(f)}>
+                                                                <FiEdit2 size={14} />
+                                                            </button>
+                                                            <button className="btn btn-icon btn-danger" onClick={() => handleDelete(f.id)}>
+                                                                <FiTrash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-muted">View Only</span>
+                                                    )}
+                                                </td>
+                                            )}
+                                        </tr>
+                                    )
+                                })}
                             </tbody>
                         </table>
                     )}
