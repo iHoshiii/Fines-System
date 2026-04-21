@@ -1,7 +1,8 @@
 'use client';
 
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/types';
 import {
@@ -78,13 +79,32 @@ const roleLabel: Record<UserRole, string> = {
 export default function Sidebar() {
     const { profile, signOut } = useAuth();
     const pathname = usePathname();
+    const router = useRouter();
+    const [pendingHref, setPendingHref] = useState<string | null>(null);
+    const [isPending, startTransition] = useTransition();
+    const role = profile?.role;
 
-    if (!profile) return null;
-
-    const allowedItems = navItems.filter(item => item.roles.includes(profile.role));
-    const initials = profile.full_name
+    const allowedItems = useMemo(
+        () => (role ? navItems.filter(item => item.roles.includes(role)) : []),
+        [role]
+    );
+    const initials = profile?.full_name
         ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
         : '?';
+
+    useEffect(() => {
+        if (pendingHref && pathname.startsWith(pendingHref)) {
+            setPendingHref(null);
+        }
+    }, [pathname, pendingHref]);
+
+    useEffect(() => {
+        allowedItems.forEach(item => {
+            router.prefetch(item.href);
+        });
+    }, [allowedItems, router]);
+
+    if (!profile) return null;
 
     return (
         <aside className="sidebar">
@@ -103,11 +123,21 @@ export default function Sidebar() {
                 {allowedItems.map((item) => {
                     const isActive = pathname === item.href ||
                         (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                    const isNavigating = isPending && pendingHref === item.href;
                     return (
                         <Link
                             key={`${item.href}-${item.label}`}
                             href={item.href}
-                            className={`sidebar-link ${isActive ? 'active' : ''}`}
+                            onClick={(e) => {
+                                if (pathname === item.href) return;
+                                e.preventDefault();
+                                setPendingHref(item.href);
+                                startTransition(() => {
+                                    router.push(item.href);
+                                });
+                            }}
+                            aria-busy={isNavigating}
+                            className={`sidebar-link ${(isActive || isNavigating) ? 'active' : ''}`}
                         >
                             {item.icon}
                             {item.label}

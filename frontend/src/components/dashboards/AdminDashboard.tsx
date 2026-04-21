@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { supabase } from '@/lib/supabaseClient';
-import { FiDollarSign, FiCheckCircle, FiAlertCircle, FiUsers, FiEye, FiX, FiPlus } from 'react-icons/fi';
+import { FiCheckCircle, FiAlertCircle, FiUsers, FiEye, FiX, FiPlus, FiSearch } from 'react-icons/fi';
 import { format } from 'date-fns';
 
 export default function AdminDashboard() {
@@ -13,21 +13,15 @@ export default function AdminDashboard() {
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [showModal, setShowModal] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [showDescModal, setShowDescModal] = useState(false);
-    const [newDesc, setNewDesc] = useState('');
+    const [showPayModal, setShowPayModal] = useState(false);
     const [isCustomDesc, setIsCustomDesc] = useState(false);
     const [fineDescription, setFineDescription] = useState('');
     const [fineAmount, setFineAmount] = useState(0);
     const [saving, setSaving] = useState(false);
-
-    const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
-
-    const handleAddDescription = () => {
-        if (!newDesc.trim()) return;
-        addDescriptionOption(newDesc.trim());
-        setNewDesc('');
-        setShowDescModal(false);
-    };
+    const [updatingPayment, setUpdatingPayment] = useState(false);
+    const [payStatus, setPayStatus] = useState<'paid' | 'unpaid'>('paid');
+    const [selectedFineIds, setSelectedFineIds] = useState<string[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const handleSaveFine = async () => {
         if (!selectedStudent || !fineDescription.trim() || fineAmount <= 0) return;
@@ -64,20 +58,61 @@ export default function AdminDashboard() {
                 student: fine.student,
                 totalAmount: 0,
                 count: 0,
-                status: 'paid',
-                lastDate: fine.created_at,
-                description: fine.description
+                paid: 0,
+                unpaid: 0,
             };
         }
         acc[studentId].totalAmount += Number(fine.amount);
         acc[studentId].count += 1;
-        if (fine.status === 'unpaid') acc[studentId].status = 'unpaid';
+        if (fine.status === 'paid') acc[studentId].paid += Number(fine.amount);
+        if (fine.status === 'unpaid') acc[studentId].unpaid += Number(fine.amount);
         return acc;
     }, {});
 
     const displayFines = Object.values(groupedFines);
+    const filteredFines = displayFines.filter((summary: any) => {
+        const s = summary.student || {};
+        const term = searchQuery.toLowerCase();
+        return (
+            (s.full_name || '').toLowerCase().includes(term) ||
+            (s.student_id_number || '').toLowerCase().includes(term) ||
+            (s.college || '').toLowerCase().includes(term) ||
+            (s.course || '').toLowerCase().includes(term) ||
+            (s.year_section || '').toLowerCase().includes(term)
+        );
+    });
     const unpaidFines = (fines || []).filter((f: any) => f.status === 'unpaid');
     const paidFines = (fines || []).filter((f: any) => f.status === 'paid');
+    const selectedStudentFines = (fines || []).filter((f: any) => f.student_id === selectedStudent?.id);
+
+    const openPayModal = (studentSummary: any) => {
+        setSelectedStudent(studentSummary);
+        setSelectedFineIds([]);
+        setPayStatus('paid');
+        setShowPayModal(true);
+    };
+
+    const toggleFineSelection = (fineId: string, checked: boolean) => {
+        setSelectedFineIds(prev => checked ? [...prev, fineId] : prev.filter(id => id !== fineId));
+    };
+
+    const applyFineStatus = async () => {
+        if (selectedFineIds.length === 0) return;
+        setUpdatingPayment(true);
+        try {
+            const { error } = await supabase
+                .from('fines')
+                .update({ status: payStatus })
+                .in('id', selectedFineIds);
+            if (error) throw error;
+            await refreshFines();
+            setShowPayModal(false);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setUpdatingPayment(false);
+        }
+    };
 
     const greetingTime = () => {
         const h = new Date().getHours();
@@ -94,9 +129,18 @@ export default function AdminDashboard() {
                     <p>Welcome to the System Admin Dashboard. Overview of all system-wide fines.</p>
                 </div>
                 <div className="flex gap-sm">
-                    <button className="btn btn-ghost" onClick={() => setShowDescModal(true)}>
-                        <FiPlus size={16} /> Add Description
-                    </button>
+                </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+                <div className="search-bar">
+                    <FiSearch size={16} />
+                    <input
+                        type="text"
+                        placeholder="Search by name, ID, college, course, year..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                    />
                 </div>
             </div>
 
@@ -106,9 +150,9 @@ export default function AdminDashboard() {
                 ) : (
                     <>
                         <div className="stat-card">
-                            <div className="stat-icon green"><FiDollarSign size={22} /></div>
+                            <div className="stat-icon green" style={{ fontSize: 22, fontWeight: 800 }}>₱</div>
                             <div className="stat-info">
-                                <p>Total System Fines</p>
+                                <p>Total Fines</p>
                                 <h3>{(fines || []).length}</h3>
                             </div>
                         </div>
@@ -140,7 +184,6 @@ export default function AdminDashboard() {
             <div className="table-container" style={{ marginTop: 24 }}>
                 <div className="table-header">
                     <span className="table-title">Student Fines Summary</span>
-                    <span className="text-sm text-muted">Total sum per student (System-wide)</span>
                 </div>
                 <div className="table-wrapper">
                     {loading && displayFines.length === 0 ? (
@@ -152,16 +195,17 @@ export default function AdminDashboard() {
                             <thead>
                                 <tr>
                                     <th>Student</th>
-                                    <th>Latest Fine</th>
+                                    <th>College</th>
+                                    <th>Course</th>
                                     <th>Count</th>
                                     <th>Total Amount</th>
-                                    <th>Status</th>
-                                    <th>Latest Date</th>
+                                    <th>Paid</th>
+                                    <th>Unpaid</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {displayFines.map((summary: any) => (
+                                {filteredFines.map((summary: any) => (
                                     <tr key={summary.id}>
                                         <td>
                                             <div className="flex align-center gap-sm">
@@ -174,13 +218,21 @@ export default function AdminDashboard() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>{summary.description}</td>
+                                        <td>{(summary.student as any)?.college || '—'}</td>
+                                        <td>
+                                            <p className="text-sm" style={{ fontWeight: 600 }}>{(summary.student as any)?.course || '—'}</p>
+                                            <p className="text-xs text-muted">{(summary.student as any)?.year_section || '—'}</p>
+                                        </td>
                                         <td>{summary.count}</td>
-                                        <td style={{ fontWeight: 700, color: summary.status === 'unpaid' ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                                        <td style={{ fontWeight: 700 }}>
                                             ₱{Number(summary.totalAmount).toFixed(2)}
                                         </td>
-                                        <td><span className={`badge badge-${summary.status}`}>{summary.status}</span></td>
-                                        <td className="text-sm text-muted">{format(new Date(summary.lastDate), 'MMM d, yyyy')}</td>
+                                        <td style={{ color: 'var(--color-success)', fontWeight: 600 }}>
+                                            ₱{Number(summary.paid).toFixed(2)}
+                                        </td>
+                                        <td style={{ color: 'var(--color-danger)', fontWeight: 600 }}>
+                                            ₱{Number(summary.unpaid).toFixed(2)}
+                                        </td>
                                         <td>
                                             <div className="flex gap-xs">
                                                 <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedStudent(summary); setShowModal(true); }}>
@@ -194,6 +246,9 @@ export default function AdminDashboard() {
                                                     setShowAddModal(true);
                                                 }}>
                                                     <FiPlus size={14} /> Fine
+                                                </button>
+                                                <button className="btn btn-sm btn-ghost" onClick={() => openPayModal(summary)}>
+                                                    Pay Fines
                                                 </button>
                                             </div>
                                         </td>
@@ -251,6 +306,77 @@ export default function AdminDashboard() {
                 </div>
             )}
 
+            {/* Pay Fines Modal */}
+            {showPayModal && selectedStudent && (
+                <div className="modal-overlay" onClick={() => setShowPayModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 700 }}>
+                        <div className="modal-header">
+                            <div>
+                                <h3>Pay Fines: {selectedStudent.student?.full_name}</h3>
+                                <p className="text-sm text-muted">Select one or more fines and set the status.</p>
+                            </div>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowPayModal(false)}>
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                            <div className="flex-between" style={{ marginBottom: 12 }}>
+                                <div className="flex gap-sm">
+                                    <button className={`btn btn-sm ${payStatus === 'paid' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setPayStatus('paid')}>
+                                        Mark as Paid
+                                    </button>
+                                    <button className={`btn btn-sm ${payStatus === 'unpaid' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setPayStatus('unpaid')}>
+                                        Mark as Unpaid
+                                    </button>
+                                </div>
+                                <button
+                                    className="btn btn-sm btn-ghost"
+                                    onClick={() => setSelectedFineIds(
+                                        selectedFineIds.length === selectedStudentFines.length
+                                            ? []
+                                            : selectedStudentFines.map((f: any) => f.id)
+                                    )}
+                                >
+                                    {selectedFineIds.length === selectedStudentFines.length ? 'Clear All' : 'Select All'}
+                                </button>
+                            </div>
+
+                            {selectedStudentFines.length === 0 ? (
+                                <p className="text-muted text-center">No fines found for this student.</p>
+                            ) : (
+                                <div className="flex-col gap-sm">
+                                    {selectedStudentFines.map((fine: any) => (
+                                        <label key={fine.id} className="card flex-between" style={{ padding: 12, cursor: 'pointer' }}>
+                                            <div className="flex gap-sm align-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedFineIds.includes(fine.id)}
+                                                    onChange={e => toggleFineSelection(fine.id, e.target.checked)}
+                                                />
+                                                <div>
+                                                    <p style={{ fontWeight: 600 }}>{fine.description}</p>
+                                                    <p className="text-xs text-muted">{format(new Date(fine.created_at), 'MMM d, yyyy')}</p>
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <p style={{ fontWeight: 700 }}>₱{Number(fine.amount).toFixed(2)}</p>
+                                                <span className={`badge badge-${fine.status}`} style={{ fontSize: 10 }}>{fine.status.toUpperCase()}</span>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowPayModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={applyFineStatus} disabled={selectedFineIds.length === 0 || updatingPayment}>
+                                {updatingPayment ? 'Updating...' : `Apply to ${selectedFineIds.length} Fine(s)`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Add Modal */}
             {showAddModal && selectedStudent && (
                 <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
@@ -300,41 +426,7 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             )}
-            {/* Add Description Template Modal */}
-            {showDescModal && (
-                <div className="modal-overlay" onClick={() => setShowDescModal(false)}>
-                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
-                        <div className="modal-header">
-                            <h3>Add Description Template</h3>
-                            <button className="btn btn-icon btn-ghost" onClick={() => setShowDescModal(false)}>
-                                <FiX size={18} />
-                            </button>
-                        </div>
-                        <div className="modal-body">
-                            <p className="text-sm text-muted mb-md">
-                                Add a common event or fine reason. This will appear as a suggestion when adding fines.
-                            </p>
-                            <div className="form-group">
-                                <label className="form-label">Description Text</label>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    value={newDesc}
-                                    onChange={e => setNewDesc(e.target.value)}
-                                    placeholder="e.g. Foundation Day Absence"
-                                    autoFocus
-                                />
-                            </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-ghost" onClick={() => setShowDescModal(false)}>Cancel</button>
-                            <button className="btn btn-primary" onClick={handleAddDescription}>
-                                <FiPlus size={15} /> Add Template
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+
         </div>
     );
 }

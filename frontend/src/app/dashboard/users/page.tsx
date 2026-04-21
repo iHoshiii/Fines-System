@@ -67,12 +67,21 @@ export default function UsersPage() {
 
         try {
             if (editing) {
-                // Update profile only (email/password changes via Supabase Auth Admin API in production)
-                const { error } = await supabase.from('profiles').update({
+                const updatePayload: any = {
                     full_name: form.full_name,
                     role: form.role,
                     student_id_number: form.role === 'student' ? form.student_id_number : null,
-                }).eq('id', editing.id);
+                };
+
+                // Keep existing email if the admin accidentally deletes it from the input
+                if (form.email.trim() !== '') {
+                    updatePayload.email = form.email.trim();
+                } else if (editing.email) {
+                    updatePayload.email = editing.email;
+                }
+
+                // Update profile only (email/password changes via Supabase Auth Admin API in production)
+                const { error } = await supabase.from('profiles').update(updatePayload).eq('id', editing.id);
                 if (error) throw error;
                 setSuccess('User updated successfully.');
             } else {
@@ -89,6 +98,7 @@ export default function UsersPage() {
                     await supabase.from('profiles').upsert({
                         id: authData.user.id,
                         full_name: form.full_name,
+                        email: form.email,
                         role: form.role,
                         student_id_number: form.role === 'student' ? form.student_id_number : null,
                     });
@@ -202,17 +212,15 @@ export default function UsersPage() {
                                 <label className="form-label">Full Name *</label>
                                 <input id="user-fullname" type="text" className="form-control" placeholder="Juan Dela Cruz" value={form.full_name} onChange={e => setForm(p => ({ ...p, full_name: e.target.value }))} />
                             </div>
+                            <div className="form-group">
+                                <label className="form-label">Email *</label>
+                                <input id="user-email" type="email" className="form-control" placeholder="user@nvsu.edu.ph" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+                            </div>
                             {!editing && (
-                                <>
-                                    <div className="form-group">
-                                        <label className="form-label">Email *</label>
-                                        <input id="user-email" type="email" className="form-control" placeholder="student@nvsu.edu.ph" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Temporary Password *</label>
-                                        <input id="user-password" type="password" className="form-control" placeholder="Min 8 characters" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} />
-                                    </div>
-                                </>
+                                <div className="form-group">
+                                    <label className="form-label">Temporary Password *</label>
+                                    <input id="user-password" type="password" className="form-control" placeholder="Min 8 characters" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} />
+                                </div>
                             )}
                             <div className="form-grid">
                                 <div className="form-group">
