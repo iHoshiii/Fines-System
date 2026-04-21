@@ -13,6 +13,8 @@ export default function StudentsPage() {
     const { students, fines: allFines, loading, refreshFines, descriptionOptions, addDescriptionOption } = useData();
 
     const [search, setSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 15;
     const [showAddFineModal, setShowAddFineModal] = useState(false);
     const [showDescModal, setShowDescModal] = useState(false);
     const [newDesc, setNewDesc] = useState('');
@@ -58,6 +60,9 @@ export default function StudentsPage() {
         const getSurname = (name: string) => name.split(' ').pop() || '';
         return getSurname(a.full_name).localeCompare(getSurname(b.full_name));
     });
+
+    const totalPages = Math.ceil(sortedFiltered.length / ITEMS_PER_PAGE);
+    const paginatedStudents = sortedFiltered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
     const handleSaveFine = async () => {
         if (!profile?.id || !selectedStudent || !fineDescription.trim() || fineAmount <= 0) return;
@@ -144,7 +149,7 @@ export default function StudentsPage() {
                         type="text"
                         placeholder="Search by name, ID, college, course, year..."
                         value={search}
-                        onChange={e => setSearch(e.target.value)}
+                        onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                     />
                 </div>
             </div>
@@ -169,7 +174,7 @@ export default function StudentsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedFiltered.map(s => {
+                                {paginatedStudents.map(s => {
                                     const counts = finesCounts[s.id] || { total: 0, unpaid: 0 };
                                     return (
                                         <tr key={s.id}>
@@ -231,6 +236,14 @@ export default function StudentsPage() {
                     )}
                 </div>
             </div>
+
+            {totalPages > 1 && (
+                <div className="flex-center mt-md gap-sm" style={{ justifyContent: 'center', marginTop: '16px' }}>
+                    <button className="btn btn-ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</button>
+                    <span className="text-sm">Page {currentPage} of {totalPages}</span>
+                    <button className="btn btn-ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</button>
+                </div>
+            )}
 
             {/* View Fines Modal */}
             {showViewFinesModal && selectedStudent && (

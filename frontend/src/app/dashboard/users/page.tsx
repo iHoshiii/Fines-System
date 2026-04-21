@@ -24,6 +24,8 @@ export default function UsersPage() {
     const [users, setUsers] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 15;
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState<Profile | null>(null);
     const [form, setForm] = useState({ full_name: '', email: '', role: 'student' as UserRole, student_id_number: '', password: '' });
@@ -122,6 +124,9 @@ export default function UsersPage() {
         u.role.toLowerCase().includes(search.toLowerCase())
     );
 
+    const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+    const paginatedUsers = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
     const pendingApprovals = users.filter(u => u.pending_full_name || u.pending_student_id);
 
     const handleApproval = async (user: Profile, approve: boolean) => {
@@ -159,7 +164,7 @@ export default function UsersPage() {
             <div style={{ marginBottom: 16 }}>
                 <div className="search-bar">
                     <FiSearch size={16} />
-                    <input id="user-search" type="text" placeholder="Search by name, ID, or role…" value={search} onChange={e => setSearch(e.target.value)} />
+                    <input id="user-search" type="text" placeholder="Search by name, ID, or role…" value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} />
                 </div>
             </div>
 
@@ -214,7 +219,7 @@ export default function UsersPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map(u => (
+                                {paginatedUsers.map(u => (
                                     <tr key={u.id}>
                                         <td>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -244,6 +249,14 @@ export default function UsersPage() {
                     )}
                 </div>
             </div>
+
+            {totalPages > 1 && (
+                <div className="flex-center mt-md gap-sm" style={{ justifyContent: 'center', marginTop: '16px' }}>
+                    <button className="btn btn-ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</button>
+                    <span className="text-sm">Page {currentPage} of {totalPages}</span>
+                    <button className="btn btn-ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</button>
+                </div>
+            )}
 
             {showModal && (
                 <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
