@@ -35,6 +35,7 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null);
     const [loadingSignIn, setLoadingSignIn] = useState(false);
     const [loadingSignUp, setLoadingSignUp] = useState(false);
+    const [isSignUp, setIsSignUp] = useState(false);
 
     useEffect(() => {
         if (!loading && user) {
@@ -185,330 +186,344 @@ export default function LoginPage() {
                     </h1>
                 </div>
 
-                {/* Sign In Form */}
-                <div className="login-card" style={{ marginBottom: 24 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>Sign In</h2>
-                        <p style={{ textAlign: 'center', margin: 0, fontSize: 14, color: 'var(--color-text-secondary)' }}>
-                            Welcome back to NVSU Fines System
-                        </p>
+                {/* Error display */}
+                {error && (
+                    <div className="alert alert-error" style={{ marginBottom: 16 }}>
+                        <FiAlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                        <span>{error}</span>
                     </div>
+                )}
 
-                    {error && (
-                        <div className="alert alert-error" style={{ marginBottom: 16 }}>
-                            <FiAlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-                            <span>{error}</span>
-                        </div>
-                    )}
-
-                    <form className="login-form" onSubmit={handleSubmit}>
-                        <div className="form-group">
-                            <label className="form-label" htmlFor="email">Email Address</label>
-                            <div style={{ position: 'relative' }}>
-                                <FiMail size={16} style={{
-                                    position: 'absolute', left: 14, top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    color: 'var(--color-text-muted)', pointerEvents: 'none'
-                                }} />
-                                <input
-                                    id="email"
-                                    type="email"
-                                    className="form-control"
-                                    placeholder="you@nvsu.edu.ph"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                    style={{ paddingLeft: 40 }}
-                                    autoComplete="email"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label" htmlFor="password">Password</label>
-                            <div style={{ position: 'relative' }}>
-                                <FiLock size={16} style={{
-                                    position: 'absolute', left: 14, top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    color: 'var(--color-text-muted)', pointerEvents: 'none'
-                                }} />
-                                <input
-                                    id="password"
-                                    type={showPassword ? "text" : "password"}
-                                    className="form-control"
-                                    placeholder="Enter your password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                    style={{ paddingLeft: 40, paddingRight: 40 }}
-                                    autoComplete="current-password"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    style={{
-                                        position: 'absolute', right: 14, top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        background: 'none', border: 'none',
-                                        color: 'var(--color-text-muted)', cursor: 'pointer',
-                                        padding: 0, display: 'flex', alignItems: 'center'
-                                    }}
-                                    aria-label={showPassword ? "Hide password" : "Show password"}
-                                >
-                                    {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={rememberMe}
-                                    onChange={(e) => setRememberMe(e.target.checked)}
-                                    style={{ margin: 0 }}
-                                />
-                                Remember me
-                            </label>
-                            <button
-                                type="button"
-                                onClick={() => setError("Password reset functionality coming soon!")}
-                                style={{
-                                    background: 'none', border: 'none', color: 'var(--color-primary)',
-                                    fontSize: 14, cursor: 'pointer', textDecoration: 'underline'
-                                }}
-                            >
-                                Forgot password?
-                            </button>
-                        </div>
-
-                        <button
-                            id="login-submit-btn"
-                            type="submit"
-                            className="btn btn-primary w-full btn-lg"
-                            disabled={loadingSignIn}
-                            style={{ marginTop: 16 }}
-                        >
-                            {loadingSignIn ? 'Signing in…' : 'Sign In'}
-                        </button>
-                    </form>
-                </div>
-
-                {/* Sign Up Form */}
+                {/* Single Card for both forms */}
                 <div className="login-card">
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>Create an Account</h2>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>
+                            {isSignUp ? 'Create an Account' : 'Sign In'}
+                        </h2>
                         <p style={{ textAlign: 'center', margin: 0, fontSize: 14, color: 'var(--color-text-secondary)' }}>
-                            Join the NVSU Fines System
+                            {isSignUp ? 'Join the NVSU Fines System' : 'Welcome back to NVSU Fines System'}
                         </p>
                     </div>
 
-                    {error && (
-                        <div className="alert alert-error" style={{ marginBottom: 16 }}>
-                            <FiAlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-                            <span>{error}</span>
-                        </div>
+                    {isSignUp ? (
+                        /* Sign Up Form */
+                        <form className="login-form" onSubmit={handleSignUp}>
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="signup-email">Email Address</label>
+                                <div style={{ position: 'relative' }}>
+                                    <FiMail size={16} style={{
+                                        position: 'absolute', left: 14, top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        color: 'var(--color-text-muted)', pointerEvents: 'none'
+                                    }} />
+                                    <input
+                                        id="signup-email"
+                                        type="email"
+                                        className="form-control"
+                                        placeholder="you@nvsu.edu.ph"
+                                        value={signUpData.email}
+                                        onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
+                                        required
+                                        style={{ paddingLeft: 40 }}
+                                        autoComplete="email"
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div className="form-group">
+                                    <label className="form-label" htmlFor="firstName">First Name</label>
+                                    <input
+                                        id="firstName"
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="First name"
+                                        value={signUpData.firstName}
+                                        onChange={(e) => setSignUpData({ ...signUpData, firstName: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label" htmlFor="lastName">Last Name</label>
+                                    <input
+                                        id="lastName"
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Last name"
+                                        value={signUpData.lastName}
+                                        onChange={(e) => setSignUpData({ ...signUpData, lastName: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="middleName">Middle Name (Optional)</label>
+                                <input
+                                    id="middleName"
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Middle name"
+                                    value={signUpData.middleName}
+                                    onChange={(e) => setSignUpData({ ...signUpData, middleName: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="idNumber">ID Number</label>
+                                <input
+                                    id="idNumber"
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Your student ID"
+                                    value={signUpData.idNumber}
+                                    onChange={(e) => setSignUpData({ ...signUpData, idNumber: e.target.value })}
+                                    required
+                                />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div className="form-group">
+                                    <label className="form-label" htmlFor="college">College</label>
+                                    <input
+                                        id="college"
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Your college"
+                                        value={signUpData.college}
+                                        onChange={(e) => setSignUpData({ ...signUpData, college: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label" htmlFor="course">Course</label>
+                                    <input
+                                        id="course"
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Your course"
+                                        value={signUpData.course}
+                                        onChange={(e) => setSignUpData({ ...signUpData, course: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="year">Year/Section</label>
+                                <input
+                                    id="year"
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="e.g., 2nd Year - A"
+                                    value={signUpData.year}
+                                    onChange={(e) => setSignUpData({ ...signUpData, year: e.target.value })}
+                                    required
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="signup-password">Password</label>
+                                <div style={{ position: 'relative' }}>
+                                    <FiLock size={16} style={{
+                                        position: 'absolute', left: 14, top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        color: 'var(--color-text-muted)', pointerEvents: 'none'
+                                    }} />
+                                    <input
+                                        id="signup-password"
+                                        type={showSignUpPassword ? "text" : "password"}
+                                        className="form-control"
+                                        placeholder="Create a password"
+                                        value={signUpData.password}
+                                        onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
+                                        required
+                                        style={{ paddingLeft: 40, paddingRight: 40 }}
+                                        autoComplete="new-password"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowSignUpPassword(!showSignUpPassword)}
+                                        style={{
+                                            position: 'absolute', right: 14, top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            background: 'none', border: 'none',
+                                            color: 'var(--color-text-muted)', cursor: 'pointer',
+                                            padding: 0, display: 'flex', alignItems: 'center'
+                                        }}
+                                        aria-label={showSignUpPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showSignUpPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="confirmPassword">Confirm Password</label>
+                                <div style={{ position: 'relative' }}>
+                                    <FiLock size={16} style={{
+                                        position: 'absolute', left: 14, top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        color: 'var(--color-text-muted)', pointerEvents: 'none'
+                                    }} />
+                                    <input
+                                        id="confirmPassword"
+                                        type={showConfirmPassword ? "text" : "password"}
+                                        className="form-control"
+                                        placeholder="Confirm your password"
+                                        value={signUpData.confirmPassword}
+                                        onChange={(e) => setSignUpData({ ...signUpData, confirmPassword: e.target.value })}
+                                        required
+                                        style={{ paddingLeft: 40, paddingRight: 40 }}
+                                        autoComplete="new-password"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        style={{
+                                            position: 'absolute', right: 14, top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            background: 'none', border: 'none',
+                                            color: 'var(--color-text-muted)', cursor: 'pointer',
+                                            padding: 0, display: 'flex', alignItems: 'center'
+                                        }}
+                                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showConfirmPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                id="signup-submit-btn"
+                                type="submit"
+                                className="btn btn-primary w-full btn-lg"
+                                disabled={loadingSignUp}
+                                style={{ marginTop: 16 }}
+                            >
+                                {loadingSignUp ? 'Creating Account…' : 'Sign Up'}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setIsSignUp(false)}
+                                style={{
+                                    background: 'none', border: 'none', color: 'var(--color-primary)',
+                                    fontSize: 14, cursor: 'pointer', textDecoration: 'underline',
+                                    marginTop: 16, width: '100%', textAlign: 'center'
+                                }}
+                            >
+                                Already have an account? Sign In
+                            </button>
+                        </form>
+                    ) : (
+                        /* Sign In Form */
+                        <form className="login-form" onSubmit={handleSubmit}>
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="email">Email Address</label>
+                                <div style={{ position: 'relative' }}>
+                                    <FiMail size={16} style={{
+                                        position: 'absolute', left: 14, top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        color: 'var(--color-text-muted)', pointerEvents: 'none'
+                                    }} />
+                                    <input
+                                        id="email"
+                                        type="email"
+                                        className="form-control"
+                                        placeholder="you@nvsu.edu.ph"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        required
+                                        style={{ paddingLeft: 40 }}
+                                        autoComplete="email"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="password">Password</label>
+                                <div style={{ position: 'relative' }}>
+                                    <FiLock size={16} style={{
+                                        position: 'absolute', left: 14, top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        color: 'var(--color-text-muted)', pointerEvents: 'none'
+                                    }} />
+                                    <input
+                                        id="password"
+                                        type={showPassword ? "text" : "password"}
+                                        className="form-control"
+                                        placeholder="Enter your password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                        style={{ paddingLeft: 40, paddingRight: 40 }}
+                                        autoComplete="current-password"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        style={{
+                                            position: 'absolute', right: 14, top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            background: 'none', border: 'none',
+                                            color: 'var(--color-text-muted)', cursor: 'pointer',
+                                            padding: 0, display: 'flex', alignItems: 'center'
+                                        }}
+                                        aria-label={showPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={rememberMe}
+                                        onChange={(e) => setRememberMe(e.target.checked)}
+                                        style={{ margin: 0 }}
+                                    />
+                                    Remember me
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setError("Password reset functionality coming soon!")}
+                                    style={{
+                                        background: 'none', border: 'none', color: 'var(--color-primary)',
+                                        fontSize: 14, cursor: 'pointer', textDecoration: 'underline'
+                                    }}
+                                >
+                                    Forgot password?
+                                </button>
+                            </div>
+
+                            <button
+                                id="login-submit-btn"
+                                type="submit"
+                                className="btn btn-primary w-full btn-lg"
+                                disabled={loadingSignIn}
+                                style={{ marginTop: 16 }}
+                            >
+                                {loadingSignIn ? 'Signing in…' : 'Sign In'}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setIsSignUp(true)}
+                                style={{
+                                    background: 'none', border: 'none', color: 'var(--color-primary)',
+                                    fontSize: 14, cursor: 'pointer', textDecoration: 'underline',
+                                    marginTop: 16, width: '100%', textAlign: 'center'
+                                }}
+                            >
+                                Don't have an account? Sign Up
+                            </button>
+                        </form>
                     )}
-
-                    <form className="login-form" onSubmit={handleSignUp}>
-                        <div className="form-group">
-                            <label className="form-label" htmlFor="signup-email">Email Address</label>
-                            <div style={{ position: 'relative' }}>
-                                <FiMail size={16} style={{
-                                    position: 'absolute', left: 14, top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    color: 'var(--color-text-muted)', pointerEvents: 'none'
-                                }} />
-                                <input
-                                    id="signup-email"
-                                    type="email"
-                                    className="form-control"
-                                    placeholder="you@nvsu.edu.ph"
-                                    value={signUpData.email}
-                                    onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
-                                    required
-                                    style={{ paddingLeft: 40 }}
-                                    autoComplete="email"
-                                />
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <div className="form-group">
-                                <label className="form-label" htmlFor="firstName">First Name</label>
-                                <input
-                                    id="firstName"
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="First name"
-                                    value={signUpData.firstName}
-                                    onChange={(e) => setSignUpData({ ...signUpData, firstName: e.target.value })}
-                                    required
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label" htmlFor="lastName">Last Name</label>
-                                <input
-                                    id="lastName"
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="Last name"
-                                    value={signUpData.lastName}
-                                    onChange={(e) => setSignUpData({ ...signUpData, lastName: e.target.value })}
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label" htmlFor="middleName">Middle Name (Optional)</label>
-                            <input
-                                id="middleName"
-                                type="text"
-                                className="form-control"
-                                placeholder="Middle name"
-                                value={signUpData.middleName}
-                                onChange={(e) => setSignUpData({ ...signUpData, middleName: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label" htmlFor="idNumber">ID Number</label>
-                            <input
-                                id="idNumber"
-                                type="text"
-                                className="form-control"
-                                placeholder="Your student ID"
-                                value={signUpData.idNumber}
-                                onChange={(e) => setSignUpData({ ...signUpData, idNumber: e.target.value })}
-                                required
-                            />
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <div className="form-group">
-                                <label className="form-label" htmlFor="college">College</label>
-                                <input
-                                    id="college"
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="Your college"
-                                    value={signUpData.college}
-                                    onChange={(e) => setSignUpData({ ...signUpData, college: e.target.value })}
-                                    required
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label" htmlFor="course">Course</label>
-                                <input
-                                    id="course"
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="Your course"
-                                    value={signUpData.course}
-                                    onChange={(e) => setSignUpData({ ...signUpData, course: e.target.value })}
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label" htmlFor="year">Year/Section</label>
-                            <input
-                                id="year"
-                                type="text"
-                                className="form-control"
-                                placeholder="e.g., 2nd Year - A"
-                                value={signUpData.year}
-                                onChange={(e) => setSignUpData({ ...signUpData, year: e.target.value })}
-                                required
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label" htmlFor="signup-password">Password</label>
-                            <div style={{ position: 'relative' }}>
-                                <FiLock size={16} style={{
-                                    position: 'absolute', left: 14, top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    color: 'var(--color-text-muted)', pointerEvents: 'none'
-                                }} />
-                                <input
-                                    id="signup-password"
-                                    type={showSignUpPassword ? "text" : "password"}
-                                    className="form-control"
-                                    placeholder="Create a password"
-                                    value={signUpData.password}
-                                    onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
-                                    required
-                                    style={{ paddingLeft: 40, paddingRight: 40 }}
-                                    autoComplete="new-password"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowSignUpPassword(!showSignUpPassword)}
-                                    style={{
-                                        position: 'absolute', right: 14, top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        background: 'none', border: 'none',
-                                        color: 'var(--color-text-muted)', cursor: 'pointer',
-                                        padding: 0, display: 'flex', alignItems: 'center'
-                                    }}
-                                    aria-label={showSignUpPassword ? "Hide password" : "Show password"}
-                                >
-                                    {showSignUpPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label" htmlFor="confirmPassword">Confirm Password</label>
-                            <div style={{ position: 'relative' }}>
-                                <FiLock size={16} style={{
-                                    position: 'absolute', left: 14, top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    color: 'var(--color-text-muted)', pointerEvents: 'none'
-                                }} />
-                                <input
-                                    id="confirmPassword"
-                                    type={showConfirmPassword ? "text" : "password"}
-                                    className="form-control"
-                                    placeholder="Confirm your password"
-                                    value={signUpData.confirmPassword}
-                                    onChange={(e) => setSignUpData({ ...signUpData, confirmPassword: e.target.value })}
-                                    required
-                                    style={{ paddingLeft: 40, paddingRight: 40 }}
-                                    autoComplete="new-password"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    style={{
-                                        position: 'absolute', right: 14, top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        background: 'none', border: 'none',
-                                        color: 'var(--color-text-muted)', cursor: 'pointer',
-                                        padding: 0, display: 'flex', alignItems: 'center'
-                                    }}
-                                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                                >
-                                    {showConfirmPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                                </button>
-                            </div>
-                        </div>
-
-                        <button
-                            id="signup-submit-btn"
-                            type="submit"
-                            className="btn btn-primary w-full btn-lg"
-                            disabled={loadingSignUp}
-                            style={{ marginTop: 16 }}
-                        >
-                            {loadingSignUp ? 'Creating Account…' : 'Sign Up'}
-                        </button>
-                    </form>
                 </div>
             </div>
         </main>
