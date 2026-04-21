@@ -24,8 +24,7 @@ export default function StudentDashboard() {
                 .from('fines')
                 .select('*, issuer:profiles!issued_by(full_name, role)')
                 .eq('student_id', profile!.id)
-                .order('created_at', { ascending: false })
-                .limit(10);
+                .order('created_at', { ascending: false });
             setFines(data || []);
         } finally {
             setLoading(false);
@@ -34,6 +33,8 @@ export default function StudentDashboard() {
 
     const unpaidFines = fines.filter(f => f.status === 'unpaid');
     const paidFines = fines.filter(f => f.status === 'paid');
+    const totalAmount = fines.reduce((sum, f) => sum + f.amount, 0);
+    const paidAmount = paidFines.reduce((sum, f) => sum + f.amount, 0);
     const unpaidAmount = unpaidFines.reduce((sum, f) => sum + f.amount, 0);
 
     const greetingTime = () => {
@@ -42,6 +43,23 @@ export default function StudentDashboard() {
         if (h < 17) return 'Good afternoon';
         return 'Good evening';
     };
+
+    const groupedFines = fines.reduce((acc, fine) => {
+        if (!acc[fine.description]) {
+            acc[fine.description] = {
+                description: fine.description,
+                totalAmount: 0,
+                paid: 0,
+                unpaid: 0,
+            };
+        }
+        acc[fine.description].totalAmount += Number(fine.amount);
+        if (fine.status === 'paid') acc[fine.description].paid += Number(fine.amount);
+        if (fine.status === 'unpaid') acc[fine.description].unpaid += Number(fine.amount);
+        return acc;
+    }, {} as Record<string, { description: string; totalAmount: number; paid: number; unpaid: number }>);
+
+    const summaryData = Object.values(groupedFines);
 
     return (
         <div>
@@ -56,7 +74,7 @@ export default function StudentDashboard() {
             {/* Stats Cards */}
             {loading ? (
                 <div className="stats-grid">
-                    {[1, 2, 3, 4].map(i => (
+                    {[1, 2, 3, 4, 5].map(i => (
                         <div key={i} className="stat-card">
                             <div className="skeleton" style={{ width: 52, height: 52, borderRadius: 'var(--radius-md)' }} />
                             <div className="flex-col gap-xs" style={{ flex: 1 }}>
@@ -69,7 +87,7 @@ export default function StudentDashboard() {
             ) : (
                 <div className="stats-grid">
                     <div className="stat-card">
-                        <div className="stat-icon green"><span style={{ fontSize: 22, fontWeight: 'bold' }}></span></div>
+                        <div className="stat-icon blue"><FiAlertCircle size={22} /></div>
                         <div className="stat-info">
                             <p>Total Fines</p>
                             <h3>{fines.length}</h3>
@@ -77,10 +95,10 @@ export default function StudentDashboard() {
                     </div>
 
                     <div className="stat-card">
-                        <div className="stat-icon red"><FiAlertCircle size={22} /></div>
+                        <div className="stat-icon gold"><span style={{ fontSize: 22, fontWeight: 'bold' }}>₱</span></div>
                         <div className="stat-info">
-                            <p>Unpaid</p>
-                            <h3>{unpaidFines.length}</h3>
+                            <p>Total Amount</p>
+                            <h3>₱{totalAmount.toFixed(2)}</h3>
                         </div>
                     </div>
 
@@ -88,14 +106,28 @@ export default function StudentDashboard() {
                         <div className="stat-icon green"><FiCheckCircle size={22} /></div>
                         <div className="stat-info">
                             <p>Paid</p>
-                            <h3>{paidFines.length}</h3>
+                            <h3 style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                                {paidFines.length}
+                                <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', fontWeight: 500 }}>(₱{paidAmount.toFixed(2)})</span>
+                            </h3>
                         </div>
                     </div>
 
                     <div className="stat-card">
-                        <div className="stat-icon gold"><span style={{ fontSize: 22, fontWeight: 'bold' }}></span></div>
+                        <div className="stat-icon red"><FiAlertCircle size={22} /></div>
                         <div className="stat-info">
-                            <p>Outstanding</p>
+                            <p>Unpaid</p>
+                            <h3 style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                                {unpaidFines.length}
+                                <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', fontWeight: 500 }}>(₱{unpaidAmount.toFixed(2)})</span>
+                            </h3>
+                        </div>
+                    </div>
+
+                    <div className="stat-card">
+                        <div className="stat-icon gold"><span style={{ fontSize: 22, fontWeight: 'bold' }}>₱</span></div>
+                        <div className="stat-info">
+                            <p>Balance</p>
                             <h3>₱{unpaidAmount.toFixed(2)}</h3>
                         </div>
                     </div>
@@ -133,22 +165,21 @@ export default function StudentDashboard() {
                 </div>
             )}
 
-            {/* Recent Fines Table */}
+            {/* Fines Summary Table */}
             <div className="table-container">
                 <div className="table-header">
-                    <span className="table-title">My Fines</span>
-                    <span className="text-sm text-muted">Showing latest 10</span>
+                    <span className="table-title">Fines Summary (By Description)</span>
+                    <span className="text-sm text-muted">Grouped total of all your fines</span>
                 </div>
                 <div className="table-wrapper">
                     {loading ? (
                         <div style={{ padding: 32, textAlign: 'center' }}>
                             <div className="animate-pulse" style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>
-                                Loading fines…
+                                Loading fines summary…
                             </div>
                         </div>
-                    ) : fines.length === 0 ? (
+                    ) : summaryData.length === 0 ? (
                         <div className="empty-state">
-                            <span style={{ fontSize: 40, fontWeight: 'bold' }}></span>
                             <h4>No fines found</h4>
                             <p>You have no recorded fines.</p>
                         </div>
@@ -157,25 +188,23 @@ export default function StudentDashboard() {
                             <thead>
                                 <tr>
                                     <th>Description</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
-                                    <th>Date</th>
+                                    <th>Total Amount</th>
+                                    <th>Paid</th>
+                                    <th>Unpaid</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {fines.map((fine) => (
-                                    <tr key={fine.id}>
-                                        <td>{fine.description}</td>
-                                        <td style={{ fontWeight: 700, color: fine.status === 'unpaid' ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                                            ₱{Number(fine.amount).toFixed(2)}
+                                {summaryData.map((s, idx) => (
+                                    <tr key={idx}>
+                                        <td style={{ fontWeight: 600 }}>{s.description}</td>
+                                        <td style={{ fontWeight: 700 }}>
+                                            ₱{s.totalAmount.toFixed(2)}
                                         </td>
-                                        <td>
-                                            <span className={`badge badge-${fine.status}`}>
-                                                {fine.status === 'paid' ? '✓ Paid' : '✗ Unpaid'}
-                                            </span>
+                                        <td style={{ color: 'var(--color-success)', fontWeight: 600 }}>
+                                            ₱{s.paid.toFixed(2)}
                                         </td>
-                                        <td className="text-sm text-muted">
-                                            {format(new Date(fine.created_at), 'MMM d, yyyy')}
+                                        <td style={{ color: 'var(--color-danger)', fontWeight: 600 }}>
+                                            ₱{s.unpaid.toFixed(2)}
                                         </td>
                                     </tr>
                                 ))}
