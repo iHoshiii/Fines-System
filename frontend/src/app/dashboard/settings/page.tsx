@@ -1,11 +1,17 @@
 'use client';
 
-import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
+import { useState } from 'react';
 import {
-    FiUser, FiShield, FiCheckCircle, FiAlertCircle,
-    FiLock, FiMail, FiHash, FiGrid, FiArrowRight
+    FiAlertCircle,
+    FiArrowRight,
+    FiCheckCircle,
+    FiGrid,
+    FiHash,
+    FiLock, FiMail,
+    FiShield,
+    FiUser
 } from 'react-icons/fi';
 
 
@@ -34,10 +40,10 @@ export default function SettingsPage() {
             const updateData: Record<string, string> = {};
             if (profile?.role === 'student') {
                 if (fullName.trim() !== profile.full_name) updateData.pending_full_name = fullName.trim();
-                else updateData.pending_full_name = null; // Clear if reverted
+                else updateData.pending_full_name; // Clear if reverted
 
                 if (studentId.trim() !== profile.student_id_number) updateData.pending_student_id = studentId.trim();
-                else updateData.pending_student_id = null; // Clear if reverted
+                else updateData.pending_student_id; // Clear if reverted
 
                 updateData.college = college;
                 updateData.course = course;
