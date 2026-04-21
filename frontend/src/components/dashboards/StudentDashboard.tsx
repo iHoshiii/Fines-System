@@ -11,6 +11,8 @@ export default function StudentDashboard() {
     const { profile } = useAuth();
     const [fines, setFines] = useState<Fine[]>([]);
     const [loading, setLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 15;
 
     useEffect(() => {
         if (!profile) return;
@@ -61,12 +63,15 @@ export default function StudentDashboard() {
 
     const summaryData = Object.values(groupedFines);
 
+    const totalPages = Math.ceil(summaryData.length / ITEMS_PER_PAGE);
+    const paginatedSummary = summaryData.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
     return (
         <div>
             {/* Page Header */}
             <div className="page-header">
                 <div className="page-header-left">
-                    <h2>{greetingTime()}, {profile?.full_name?.split(' ')[0] || 'Student'} 👋</h2>
+                    <h2>{greetingTime()}, {profile?.full_name?.split(' ')[0] || 'Student'}!</h2>
                     <p>Here is a summary of your fine account status.</p>
                 </div>
             </div>
@@ -146,7 +151,7 @@ export default function StudentDashboard() {
                             <div>
                                 <strong>You have {unpaidFines.length} unpaid fine{unpaidFines.length > 1 ? 's' : ''}.</strong>
                                 <p style={{ marginTop: 2, fontSize: 13, opacity: 0.85 }}>
-                                    Total outstanding balance: <strong>₱{unpaidAmount.toFixed(2)}</strong>.
+                                    Total balance: <strong>₱{unpaidAmount.toFixed(2)}</strong>.
                                     Please settle your fines at the respective office.
                                 </p>
                             </div>
@@ -168,8 +173,7 @@ export default function StudentDashboard() {
             {/* Fines Summary Table */}
             <div className="table-container">
                 <div className="table-header">
-                    <span className="table-title">Fines Summary (By Description)</span>
-                    <span className="text-sm text-muted">Grouped total of all your fines</span>
+                    <span className="table-title">Fines Summary</span>
                 </div>
                 <div className="table-wrapper">
                     {loading ? (
@@ -194,7 +198,7 @@ export default function StudentDashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {summaryData.map((s, idx) => (
+                                {paginatedSummary.map((s, idx) => (
                                     <tr key={idx}>
                                         <td style={{ fontWeight: 600 }}>{s.description}</td>
                                         <td style={{ fontWeight: 700 }}>
@@ -213,6 +217,14 @@ export default function StudentDashboard() {
                     )}
                 </div>
             </div>
+
+            {totalPages > 1 && (
+                <div className="flex-center mt-md gap-sm" style={{ justifyContent: 'center', marginTop: '16px' }}>
+                    <button className="btn btn-ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</button>
+                    <span className="text-sm">Page {currentPage} of {totalPages}</span>
+                    <button className="btn btn-ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</button>
+                </div>
+            )}
         </div>
     );
 }
