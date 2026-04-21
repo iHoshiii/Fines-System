@@ -24,11 +24,33 @@ export default function LoginPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+
+        // Basic validation
+        if (!email.trim()) {
+            setError('Email is required');
+            return;
+        }
+        if (!password.trim()) {
+            setError('Password is required');
+            return;
+        }
+        if (!email.includes('@nvsu.edu.ph')) {
+            setError('Please use your NVSU email address');
+            return;
+        }
+
         setLoadingSignIn(true);
         const { error } = await signIn(email, password);
         setLoadingSignIn(false);
         if (error) {
-            setError(error);
+            // Provide more user-friendly error messages
+            if (error.includes('Invalid login credentials')) {
+                setError('Invalid email or password. Please check your credentials and try again.');
+            } else if (error.includes('Email not confirmed')) {
+                setError('Please check your email and confirm your account before signing in.');
+            } else {
+                setError(error);
+            }
         } else {
             router.replace('/dashboard');
         }
@@ -166,10 +188,10 @@ export default function LoginPage() {
                             id="login-submit-btn"
                             type="submit"
                             className="btn btn-primary w-full btn-lg"
-                            disabled={loading}
+                            disabled={loadingSignIn}
                             style={{ marginTop: 16 }}
                         >
-                            {loading ? 'Signing in…' : 'Sign In'}
+                            {loadingSignIn ? 'Signing in…' : 'Sign In'}
                         </button>
                     </form>
 
