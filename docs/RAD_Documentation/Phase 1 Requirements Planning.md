@@ -1,6 +1,6 @@
 # Phase 1: Requirements Planning
 
-> **Instructions for the Author:**
+> **Problem:**
  One of the main problem of Nueva Vizcaya State University is the management of fines. It is currently being done manually, which is inefficient and prone to errors. This system aims to solve this problem by providing a centralized, digital ecosystem for issuing, paying, and tracking student fines across NCSSC and college organizations.
 
 ## 1. Project Background and Objective
