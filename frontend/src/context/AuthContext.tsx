@@ -1,15 +1,24 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Profile } from '@/types';
 import { User } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 interface AuthContextType {
     user: User | null;
     profile: Profile | null;
     loading: boolean;
     signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+    signUp: (userData: {
+        email: string;
+        password: string;
+        fullName: string;
+        studentId: string;
+        college: string;
+        course: string;
+        year: string;
+    }) => Promise<{ error: string | null }>;
     signOut: () => Promise<void>;
     refreshProfile: () => Promise<void>;
 }
@@ -60,12 +69,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: error ? error.message : null };
     };
 
+    const signUp = async (userData: {
+        email: string;
+        password: string;
+        fullName: string;
+        studentId: string;
+        college: string;
+        course: string;
+        year: string;
+    }) => {
+        const { error } = await supabase.auth.signUp({
+            email: userData.email,
+            password: userData.password,
+            options: {
+                data: {
+                    full_name: userData.fullName,
+                    role: 'student',
+                    student_id_number: userData.studentId,
+                    college: userData.college,
+                    course: userData.course,
+                    year_section: userData.year
+                }
+            }
+        });
+        return { error: error ? error.message : null };
+    };
+
     const signOut = async () => {
         await supabase.auth.signOut();
     };
 
     return (
-        <AuthContext.Provider value={{ user, profile, loading, signIn, signOut, refreshProfile }}>
+        <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut, refreshProfile }}>
             {children}
         </AuthContext.Provider>
     );
