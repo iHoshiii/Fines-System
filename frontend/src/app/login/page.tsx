@@ -1,30 +1,50 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { FiMail, FiLock, FiAlertCircle, FiShield } from 'react-icons/fi';
 
 export default function LoginPage() {
-    const { signIn } = useAuth();
+    const { signIn, user, loading } = useAuth();
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loadingSignIn, setLoadingSignIn] = useState(false);
+
+    useEffect(() => {
+        if (!loading && user) {
+            router.replace('/dashboard');
+        }
+    }, [user, loading, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        setLoading(true);
+        setLoadingSignIn(true);
         const { error } = await signIn(email, password);
-        setLoading(false);
+        setLoadingSignIn(false);
         if (error) {
             setError(error);
         } else {
             router.replace('/dashboard');
         }
     };
+
+    if (loading) {
+        return (
+            <main className="login-page">
+                <div className="login-card-wrapper">
+                    <div className="flex-center" style={{ minHeight: '400px' }}>
+                        <div className="skeleton" style={{ width: 48, height: 48, borderRadius: 'var(--radius-full)' }} />
+                    </div>
+                </div>
+            </main>
+        );
+    }
+
+    if (user) return null;
 
     return (
         <main className="login-page">
