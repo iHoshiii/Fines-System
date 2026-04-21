@@ -8,13 +8,15 @@ Before starting, ensure you have the following installed on your system:
 
 - **Node.js** (version 18 or higher): Download from [nodejs.org](https://nodejs.org/)
 - **Python** (version 3.8 or higher): Download from [python.org](https://www.python.org/)
+
 - **Git**: For cloning the repository
+
 - **Supabase Account**: Sign up at [supabase.com](https://supabase.com/) for the database
 
 ## 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/iHoshiii/Fines-System
 cd Fines-System-NVSU
 ```
 

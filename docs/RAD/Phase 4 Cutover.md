@@ -23,7 +23,6 @@ Manual execution of `schema.sql` to initialize all custom tables (`profiles`, `f
  Provide transparent guides for **Students** (how to check their Fines Summary overview).
 
 ## 4. Maintenance and Future Roadmap
-*What comes next post-launch?*
 * E.g., potential future integrations of automated payment APIs.
 * Scheduled database backups.
 
