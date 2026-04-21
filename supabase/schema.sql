@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   role TEXT NOT NULL DEFAULT 'student'
     CHECK (role IN ('admin', 'student', 'ncssc', 'college_org', 'sub_org')),
   student_id_number TEXT UNIQUE,
+  email TEXT,
   college TEXT,
   course TEXT,
   year_section TEXT,
