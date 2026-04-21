@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FiAlertCircle, FiEye, FiEyeOff, FiLock, FiMail, FiShield } from 'react-icons/fi';
@@ -8,12 +9,33 @@ import { FiAlertCircle, FiEye, FiEyeOff, FiLock, FiMail, FiShield } from 'react-
 export default function LoginPage() {
     const { signIn, user, loading } = useAuth();
     const router = useRouter();
+    const [isSignUp, setIsSignUp] = useState(false);
+    
+    // Login state
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
+    
+    // Sign up state
+    const [signUpData, setSignUpData] = useState({
+        email: '',
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        idNumber: '',
+        college: '',
+        course: '',
+        year: '',
+        password: '',
+        confirmPassword: ''
+    });
+    const [showSignUpPassword, setShowSignUpPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    
     const [error, setError] = useState<string | null>(null);
     const [loadingSignIn, setLoadingSignIn] = useState(false);
+    const [loadingSignUp, setLoadingSignUp] = useState(false);
 
     useEffect(() => {
         if (!loading && user) {
@@ -56,6 +78,75 @@ export default function LoginPage() {
         }
     };
 
+    const handleSignUp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+
+        // Validation
+        if (!signUpData.email.trim() || !signUpData.firstName.trim() || !signUpData.lastName.trim() || 
+            !signUpData.idNumber.trim() || !signUpData.college.trim() || !signUpData.course.trim() || 
+            !signUpData.year.trim() || !signUpData.password.trim()) {
+            setError('All fields are required');
+            return;
+        }
+        
+        if (!signUpData.email.includes('@nvsu.edu.ph')) {
+            setError('Please use your NVSU email address');
+            return;
+        }
+        
+        if (signUpData.password !== signUpData.confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+        
+        if (signUpData.password.length < 6) {
+            setError('Password must be at least 6 characters long');
+            return;
+        }
+
+        setLoadingSignUp(true);
+        
+        try {
+            // Create user in Supabase Auth
+            const { data, error: signUpError } = await supabase.auth.signUp({
+                email: signUpData.email,
+                password: signUpData.password,
+                options: {
+                    data: {
+                        full_name: `${signUpData.firstName} ${signUpData.middleName} ${signUpData.lastName}`.trim(),
+                        role: 'student',
+                        student_id_number: signUpData.idNumber,
+                        college: signUpData.college,
+                        course: signUpData.course,
+                        year_section: signUpData.year
+                    }
+                }
+            });
+
+            if (signUpError) {
+                if (signUpError.message.includes('already registered')) {
+                    setError('An account with this email already exists');
+                } else {
+                    setError(signUpError.message);
+                }
+                return;
+            }
+
+            setError('Account created successfully! Please check your email to confirm your account.');
+            // Switch back to login after successful signup
+            setTimeout(() => {
+                setIsSignUp(false);
+                setError(null);
+            }, 3000);
+            
+        } catch (err) {
+            setError('An error occurred during sign up');
+        } finally {
+            setLoadingSignUp(false);
+        }
+    };
+
     if (loading) {
         return (
             <main className="login-page">
@@ -74,26 +165,68 @@ export default function LoginPage() {
         <main className="login-page">
             <div className="login-card-wrapper">
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
-                    <div className="login-logo centered">N</div>
-                    <div className="login-logo-text centered">
-                        <h1>NVSU Fines System</h1>
-                        <span>Nueva Vizcaya State University</span>
-                    </div>
+                    <h1 style={{ 
+                        fontSize: '2.5rem', 
+                        fontWeight: 'bold', 
+                        background: 'linear-gradient(135deg, #FFD700 0%, #006837 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                        marginBottom: 8
+                    }}>
+                        NVSU Fines System
+                    </h1>
                 </div>
 
                 <div className="login-card">
+                    {/* Tab Switcher */}
+                    <div style={{ display: 'flex', marginBottom: 24, borderBottom: '1px solid var(--color-border)' }}>
+                        <button
+                            onClick={() => { setIsSignUp(false); setError(null); }}
+                            style={{
+                                flex: 1,
+                                padding: '12px',
+                                border: 'none',
+                                background: isSignUp ? 'transparent' : 'var(--color-primary-50)',
+                                color: isSignUp ? 'var(--color-text-muted)' : 'var(--color-primary)',
+                                fontWeight: isSignUp ? 'normal' : '600',
+                                cursor: 'pointer',
+                                borderBottom: isSignUp ? 'none' : '2px solid var(--color-primary)'
+                            }}
+                        >
+                            Sign In
+                        </button>
+                        <button
+                            onClick={() => { setIsSignUp(true); setError(null); }}
+                            style={{
+                                flex: 1,
+                                padding: '12px',
+                                border: 'none',
+                                background: isSignUp ? 'var(--color-primary-50)' : 'transparent',
+                                color: isSignUp ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                fontWeight: isSignUp ? '600' : 'normal',
+                                cursor: 'pointer',
+                                borderBottom: isSignUp ? '2px solid var(--color-primary)' : 'none'
+                            }}
+                        >
+                            Sign Up
+                        </button>
+                    </div>
+
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 24 }}>
                         <div style={{
                             width: 48, height: 48,
-                            background: 'var(--color-primary-100)',
+                            background: 'linear-gradient(135deg, #FFD700 0%, #006837 100%)',
                             borderRadius: 'var(--radius-full)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'var(--color-primary)'
+                            color: 'white'
                         }}>
                             <FiShield size={24} />
                         </div>
-                        <h2 style={{ textAlign: 'center' }}>Welcome Back</h2>
-                        <p style={{ textAlign: 'center', margin: 0 }}>Sign in to your account</p>
+                        <h2 style={{ textAlign: 'center' }}>{isSignUp ? 'Create Account' : 'Welcome Back'}</h2>
+                        <p style={{ textAlign: 'center', margin: 0 }}>
+                            {isSignUp ? 'Join the NVSU Fines System' : 'Sign in to your account'}
+                        </p>
                     </div>
 
                     {error && (
