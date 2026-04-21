@@ -174,7 +174,10 @@ export default function StudentsPage() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td><p className="text-sm">{s.course || 'N/A'}</p><p className="text-xs text-muted">Year {s.year_level || '-'}</p></td>
+                                            <td>
+                                                <p className="text-sm" style={{ fontWeight: 600 }}>{s.course || 'N/A'}</p>
+                                                <p className="text-xs text-muted">{s.college || 'No College'} • {s.year_section || 'No Year/Sec'}</p>
+                                            </td>
                                             <td>
                                                 {counts.total === 0 ? (
                                                     <span className="text-sm text-muted">No fines</span>

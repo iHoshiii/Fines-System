@@ -17,6 +17,9 @@ export default function SettingsPage() {
     // Form States
     const [fullName, setFullName] = useState(profile?.full_name || '');
     const [studentId, setStudentId] = useState(profile?.student_id_number || '');
+    const [college, setCollege] = useState(profile?.college || '');
+    const [course, setCourse] = useState(profile?.course || '');
+    const [yearSection, setYearSection] = useState(profile?.year_section || '');
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -29,6 +32,9 @@ export default function SettingsPage() {
             const updateData: Record<string, string> = { full_name: fullName };
             if (profile?.role === 'student') {
                 updateData.student_id_number = studentId;
+                updateData.college = college;
+                updateData.course = course;
+                updateData.year_section = yearSection;
             }
 
             const { error } = await supabase
@@ -179,17 +185,54 @@ export default function SettingsPage() {
                         </div>
 
                         {profile.role === 'student' && (
-                            <div className="form-group">
-                                <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Student ID Number</label>
-                                <div className="search-bar" style={{ borderRadius: 'var(--radius-md)', padding: '0 14px', background: 'var(--color-bg)' }}>
-                                    <FiHash size={14} />
+                            <div className="form-col gap-md">
+                                <div className="form-group">
+                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Student ID Number</label>
+                                    <div className="search-bar" style={{ borderRadius: 'var(--radius-md)', padding: '0 14px', background: 'var(--color-bg)' }}>
+                                        <FiHash size={14} />
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            style={{ border: 'none', boxShadow: 'none' }}
+                                            placeholder="e.g. 2021-0001"
+                                            value={studentId}
+                                            onChange={(e) => setStudentId(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="form-grid">
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>College</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="e.g. CITE"
+                                            value={college}
+                                            onChange={(e) => setCollege(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Course</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="e.g. BSCS"
+                                            value={course}
+                                            onChange={(e) => setCourse(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Year and Section</label>
                                     <input
                                         type="text"
                                         className="form-control"
-                                        style={{ border: 'none', boxShadow: 'none' }}
-                                        placeholder="e.g. 2021-0001"
-                                        value={studentId}
-                                        onChange={(e) => setStudentId(e.target.value)}
+                                        placeholder="e.g. 3A"
+                                        value={yearSection}
+                                        onChange={(e) => setYearSection(e.target.value)}
                                         required
                                     />
                                 </div>
