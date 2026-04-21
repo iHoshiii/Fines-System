@@ -29,6 +29,20 @@ export default function FinesPage() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
+    // Filter, pagination, sorting states
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 15;
+
+    // Add Fine Student Selection
+    const [studentSearch, setStudentSearch] = useState('');
+
+    // Pay Fines Modal
+    const [showPayModal, setShowPayModal] = useState(false);
+    const [payFineSearch, setPayFineSearch] = useState('');
+    const [selectedFineIds, setSelectedFineIds] = useState<string[]>([]);
+    const [payStatus, setPayStatus] = useState<'paid' | 'unpaid'>('paid');
+    const [updatingPayment, setUpdatingPayment] = useState(false);
+
     const LAST_DESCRIPTION_STORAGE_KEY = 'fine_last_selected_description';
 
     const fines = isStudent ? (allFines || []).filter(f => f.student_id === profile!.id) : (allFines || []);
@@ -118,13 +132,69 @@ export default function FinesPage() {
         }
     };
 
-    const filteredFines = fines.filter(f => {
+    const applyFineStatus = async () => {
+        if (selectedFineIds.length === 0) return;
+        setUpdatingPayment(true);
+        try {
+            const { error } = await supabase
+                .from('fines')
+                .update({ status: payStatus })
+                .in('id', selectedFineIds);
+            if (error) throw error;
+            await refreshFines();
+            setShowPayModal(false);
+            setSuccess(`Updated ${selectedFineIds.length} fine(s) status`);
+            setTimeout(() => setSuccess(null), 3000);
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setUpdatingPayment(false);
+        }
+    };
+
+    // First-In-Last-Out (FILO) = descending by created_at
+    const sortedFines = [...fines].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const filteredFines = sortedFines.filter(f => {
         const matchStatus = statusFilter === 'all' || f.status === statusFilter;
         const s = search.toLowerCase();
         const matchSearch = search === '' ||
             f.description.toLowerCase().includes(s) ||
-            (f.student as any)?.full_name?.toLowerCase().includes(s);
+            (f.student as any)?.full_name?.toLowerCase().includes(s) ||
+            (f.student as any)?.student_id_number?.toLowerCase().includes(s) ||
+            (f.student as any)?.college?.toLowerCase().includes(s) ||
+            (f.student as any)?.course?.toLowerCase().includes(s) ||
+            (f.student as any)?.year_section?.toLowerCase().includes(s);
         return matchStatus && matchSearch;
+    });
+
+    const totalPages = Math.ceil(filteredFines.length / ITEMS_PER_PAGE);
+    const paginatedFines = filteredFines.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    // Student sorting and filtering for Add Fines
+    const sortedStudents = [...students].sort((a, b) => {
+        const getSurname = (name: string) => name.split(' ').pop() || '';
+        return getSurname(a.full_name).localeCompare(getSurname(b.full_name));
+    });
+    const filteredStudents = sortedStudents.filter(s => {
+        const term = studentSearch.toLowerCase();
+        return (
+            (s.full_name || '').toLowerCase().includes(term) ||
+            (s.student_id_number || '').toLowerCase().includes(term) ||
+            (s.college || '').toLowerCase().includes(term) ||
+            (s.course || '').toLowerCase().includes(term) ||
+            (s.year_section || '').toLowerCase().includes(term)
+        );
+    });
+
+    // Filtering for Pay Fines modal
+    const payModalFines = sortedFines.filter(f => {
+        const s = payFineSearch.toLowerCase();
+        return (
+            f.description.toLowerCase().includes(s) ||
+            (f.student as any)?.full_name?.toLowerCase().includes(s) ||
+            (f.student as any)?.student_id_number?.toLowerCase().includes(s)
+        );
     });
 
     const renderTableSkeleton = (rows = 6) => (
@@ -179,6 +249,9 @@ export default function FinesPage() {
                     <div className="flex gap-sm">
                         <button className="btn btn-ghost" onClick={() => { setShowDescModal(true); setError(null); }}>
                             <FiPlus size={16} /> Add Description
+                        </button>
+                        <button className="btn btn-primary" onClick={() => { setShowPayModal(true); setSelectedFineIds([]); }}>
+                            Pay Fines
                         </button>
                         <button className="btn btn-primary" onClick={openAddModal}>
                             <FiPlus size={16} /> Add Fine
@@ -238,13 +311,16 @@ export default function FinesPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredFines.map(f => (
+                                {paginatedFines.map(f => (
                                     <tr key={f.id}>
                                         {!isStudent && (
                                             <td>
                                                 <div>
                                                     <p style={{ fontWeight: 600 }}>{(f.student as any)?.full_name || '-'}</p>
                                                     <p className="text-xs text-muted">{(f.student as any)?.student_id_number || ''}</p>
+                                                    <p className="text-xs text-muted">
+                                                        {(f.student as any)?.college || '—'} • {(f.student as any)?.course || '—'}
+                                                    </p>
                                                 </div>
                                             </td>
                                         )}
@@ -284,6 +360,26 @@ export default function FinesPage() {
                 </div>
             </div>
 
+            {totalPages > 1 && (
+                <div className="flex-center mt-md gap-sm" style={{ justifyContent: 'center' }}>
+                    <button
+                        className="btn btn-ghost"
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(p => p - 1)}
+                    >
+                        Previous
+                    </button>
+                    <span className="text-sm">Page {currentPage} of {totalPages}</span>
+                    <button
+                        className="btn btn-ghost"
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(p => p + 1)}
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
+
             {/* Add Fine Modal */}
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
@@ -302,14 +398,23 @@ export default function FinesPage() {
                             )}
                             <div className="form-group">
                                 <label className="form-label">Student</label>
+                                <input
+                                    type="text"
+                                    className="form-control mb-xs"
+                                    placeholder="Type to search students (Name, ID, College, Section)..."
+                                    value={studentSearch}
+                                    onChange={e => setStudentSearch(e.target.value)}
+                                />
                                 <select
                                     className="form-control"
                                     value={formData.student_id}
                                     onChange={e => setFormData(p => ({ ...p, student_id: e.target.value }))}
                                 >
-                                    <option value="" disabled>Select Student</option>
-                                    {students.map(s => (
-                                        <option key={s.id} value={s.id}>{s.full_name}</option>
+                                    <option value="" disabled>Select Student ({filteredStudents.length} results)</option>
+                                    {filteredStudents.map(s => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.full_name} | {s.college || 'N/A'} - {s.course || 'N/A'} {s.year_section || ''}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -378,6 +483,92 @@ export default function FinesPage() {
                             <button className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
                             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
                                 <FiSave size={15} /> {saving ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Pay Fines Modal */}
+            {showPayModal && (
+                <div className="modal-overlay" onClick={() => setShowPayModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 700 }}>
+                        <div className="modal-header">
+                            <div>
+                                <h3>Pay Fines</h3>
+                                <p className="text-sm text-muted">Select fines to mark as paid or unpaid.</p>
+                            </div>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowPayModal(false)}>
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                            <div className="form-group">
+                                <div className="search-bar" style={{ marginBottom: 12 }}>
+                                    <FiSearch size={14} />
+                                    <input
+                                        type="text"
+                                        placeholder="Search fine description, student name, or ID..."
+                                        value={payFineSearch}
+                                        onChange={e => setPayFineSearch(e.target.value)}
+                                        style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%' }}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex-between" style={{ marginBottom: 12 }}>
+                                <div className="flex gap-sm">
+                                    <button className={`btn btn-sm ${payStatus === 'paid' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setPayStatus('paid')}>
+                                        Mark as Paid
+                                    </button>
+                                    <button className={`btn btn-sm ${payStatus === 'unpaid' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setPayStatus('unpaid')}>
+                                        Mark as Unpaid
+                                    </button>
+                                </div>
+                                <button
+                                    className="btn btn-sm btn-ghost"
+                                    onClick={() => setSelectedFineIds(
+                                        selectedFineIds.length === payModalFines.length
+                                            ? []
+                                            : payModalFines.map(f => f.id)
+                                    )}
+                                >
+                                    {selectedFineIds.length === payModalFines.length && payModalFines.length > 0 ? 'Clear All' : 'Select All'}
+                                </button>
+                            </div>
+
+                            {payModalFines.length === 0 ? (
+                                <p className="text-center text-muted">No fines match your search.</p>
+                            ) : (
+                                <div className="flex-col gap-sm">
+                                    {payModalFines.map(f => (
+                                        <label key={f.id} className="card flex-between" style={{ padding: 12, cursor: 'pointer' }}>
+                                            <div className="flex gap-sm align-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedFineIds.includes(f.id)}
+                                                    onChange={e => {
+                                                        const checked = e.target.checked;
+                                                        setSelectedFineIds(prev => checked ? [...prev, f.id] : prev.filter(id => id !== f.id));
+                                                    }}
+                                                />
+                                                <div>
+                                                    <p style={{ fontWeight: 600 }}>{f.description}</p>
+                                                    <p className="text-xs text-muted">{(f.student as any)?.full_name} | {format(new Date(f.created_at), 'MMM d, yyyy')}</p>
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <p style={{ fontWeight: 700 }}>₱{Number(f.amount).toFixed(2)}</p>
+                                                <span className={`badge badge-${f.status}`} style={{ fontSize: 10 }}>{f.status.toUpperCase()}</span>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowPayModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={applyFineStatus} disabled={selectedFineIds.length === 0 || updatingPayment}>
+                                {updatingPayment ? 'Updating...' : `Apply to ${selectedFineIds.length} Fine(s)`}
                             </button>
                         </div>
                     </div>
