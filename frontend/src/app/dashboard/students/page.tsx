@@ -44,11 +44,20 @@ export default function StudentsPage() {
         return acc;
     }, {});
 
-    const filtered = (students || []).filter(s =>
-        search === '' ||
-        s.full_name.toLowerCase().includes(search.toLowerCase()) ||
-        s.student_id_number?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = (students || []).filter(s => {
+        const term = search.toLowerCase();
+        return search === '' ||
+            (s.full_name || '').toLowerCase().includes(term) ||
+            (s.student_id_number || '').toLowerCase().includes(term) ||
+            (s.college || '').toLowerCase().includes(term) ||
+            (s.course || '').toLowerCase().includes(term) ||
+            (s.year_section || '').toLowerCase().includes(term);
+    });
+
+    const sortedFiltered = [...filtered].sort((a, b) => {
+        const getSurname = (name: string) => name.split(' ').pop() || '';
+        return getSurname(a.full_name).localeCompare(getSurname(b.full_name));
+    });
 
     const handleSaveFine = async () => {
         if (!profile?.id || !selectedStudent || !fineDescription.trim() || fineAmount <= 0) return;
@@ -133,7 +142,7 @@ export default function StudentsPage() {
                     <FiSearch size={16} />
                     <input
                         type="text"
-                        placeholder="Search students..."
+                        placeholder="Search by name, ID, college, course, year..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                     />
@@ -146,20 +155,21 @@ export default function StudentsPage() {
                 <div className="table-wrapper">
                     {loading && students.length === 0 ? (
                         <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>
-                    ) : filtered.length === 0 ? (
+                    ) : sortedFiltered.length === 0 ? (
                         <div className="empty-state"><h4>No students found</h4></div>
                     ) : (
                         <table>
                             <thead>
                                 <tr>
                                     <th>Student</th>
-                                    <th>Course/Year</th>
+                                    <th>College</th>
+                                    <th>Course</th>
                                     <th>Fines Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map(s => {
+                                {sortedFiltered.map(s => {
                                     const counts = finesCounts[s.id] || { total: 0, unpaid: 0 };
                                     return (
                                         <tr key={s.id}>
@@ -174,9 +184,10 @@ export default function StudentsPage() {
                                                     </div>
                                                 </div>
                                             </td>
+                                            <td>{s.college || '—'}</td>
                                             <td>
-                                                <p className="text-sm" style={{ fontWeight: 600 }}>{s.course || 'N/A'}</p>
-                                                <p className="text-xs text-muted">{s.college || 'No College'} • {s.year_section || 'No Year/Sec'}</p>
+                                                <p className="text-sm" style={{ fontWeight: 600 }}>{s.course || '—'}</p>
+                                                <p className="text-xs text-muted">{s.year_section || '—'}</p>
                                             </td>
                                             <td>
                                                 {counts.total === 0 ? (
