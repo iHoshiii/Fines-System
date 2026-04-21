@@ -4,12 +4,11 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { FiAlertCircle, FiEye, FiEyeOff, FiLock, FiMail, FiShield } from 'react-icons/fi';
+import { FiAlertCircle, FiEye, FiEyeOff, FiLock, FiMail } from 'react-icons/fi';
 
 export default function LoginPage() {
     const { signIn, user, loading } = useAuth();
     const router = useRouter();
-    const [isSignUp, setIsSignUp] = useState(false);
     
     // Login state
     const [email, setEmail] = useState('');
@@ -134,11 +133,19 @@ export default function LoginPage() {
             }
 
             setError('Account created successfully! Please check your email to confirm your account.');
-            // Switch back to login after successful signup
-            setTimeout(() => {
-                setIsSignUp(false);
-                setError(null);
-            }, 3000);
+            // Reset form after successful signup
+            setSignUpData({
+                email: '',
+                firstName: '',
+                middleName: '',
+                lastName: '',
+                idNumber: '',
+                college: '',
+                course: '',
+                year: '',
+                password: '',
+                confirmPassword: ''
+            });
             
         } catch (err) {
             setError('An error occurred during sign up');
@@ -178,54 +185,12 @@ export default function LoginPage() {
                     </h1>
                 </div>
 
-                <div className="login-card">
-                    {/* Tab Switcher */}
-                    <div style={{ display: 'flex', marginBottom: 24, borderBottom: '1px solid var(--color-border)' }}>
-                        <button
-                            onClick={() => { setIsSignUp(false); setError(null); }}
-                            style={{
-                                flex: 1,
-                                padding: '12px',
-                                border: 'none',
-                                background: isSignUp ? 'transparent' : 'var(--color-primary-50)',
-                                color: isSignUp ? 'var(--color-text-muted)' : 'var(--color-primary)',
-                                fontWeight: isSignUp ? 'normal' : '600',
-                                cursor: 'pointer',
-                                borderBottom: isSignUp ? 'none' : '2px solid var(--color-primary)'
-                            }}
-                        >
-                            Sign In
-                        </button>
-                        <button
-                            onClick={() => { setIsSignUp(true); setError(null); }}
-                            style={{
-                                flex: 1,
-                                padding: '12px',
-                                border: 'none',
-                                background: isSignUp ? 'var(--color-primary-50)' : 'transparent',
-                                color: isSignUp ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                fontWeight: isSignUp ? '600' : 'normal',
-                                cursor: 'pointer',
-                                borderBottom: isSignUp ? '2px solid var(--color-primary)' : 'none'
-                            }}
-                        >
-                            Sign Up
-                        </button>
-                    </div>
-
+                {/* Sign In Form */}
+                <div className="login-card" style={{ marginBottom: 24 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-                        <div style={{
-                            width: 48, height: 48,
-                            background: 'linear-gradient(135deg, #FFD700 0%, #006837 100%)',
-                            borderRadius: 'var(--radius-full)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'white'
-                        }}>
-                            <FiShield size={24} />
-                        </div>
-                        <h2 style={{ textAlign: 'center' }}>{isSignUp ? 'Create Account' : 'Welcome Back'}</h2>
-                        <p style={{ textAlign: 'center', margin: 0 }}>
-                            {isSignUp ? 'Join the NVSU Fines System' : 'Sign in to your account'}
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>Sign In</h2>
+                        <p style={{ textAlign: 'center', margin: 0, fontSize: 14, color: 'var(--color-text-secondary)' }}>
+                            Welcome back to NVSU Fines System
                         </p>
                     </div>
 
@@ -327,12 +292,226 @@ export default function LoginPage() {
                             {loadingSignIn ? 'Signing in…' : 'Sign In'}
                         </button>
                     </form>
+                </div>
 
-                    <p className="text-muted text-sm text-center" style={{ marginTop: 24 }}>
-                        Powered by NCSSC & University IT
-                    </p>
+                {/* Sign Up Form */}
+                <div className="login-card">
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>Create an Account</h2>
+                        <p style={{ textAlign: 'center', margin: 0, fontSize: 14, color: 'var(--color-text-secondary)' }}>
+                            Join the NVSU Fines System
+                        </p>
+                    </div>
+
+                    {error && (
+                        <div className="alert alert-error" style={{ marginBottom: 16 }}>
+                            <FiAlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                            <span>{error}</span>
+                        </div>
+                    )}
+
+                    <form className="login-form" onSubmit={handleSignUp}>
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="signup-email">Email Address</label>
+                            <div style={{ position: 'relative' }}>
+                                <FiMail size={16} style={{
+                                    position: 'absolute', left: 14, top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    color: 'var(--color-text-muted)', pointerEvents: 'none'
+                                }} />
+                                <input
+                                    id="signup-email"
+                                    type="email"
+                                    className="form-control"
+                                    placeholder="you@nvsu.edu.ph"
+                                    value={signUpData.email}
+                                    onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
+                                    required
+                                    style={{ paddingLeft: 40 }}
+                                    autoComplete="email"
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="firstName">First Name</label>
+                                <input
+                                    id="firstName"
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="First name"
+                                    value={signUpData.firstName}
+                                    onChange={(e) => setSignUpData({ ...signUpData, firstName: e.target.value })}
+                                    required
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="lastName">Last Name</label>
+                                <input
+                                    id="lastName"
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Last name"
+                                    value={signUpData.lastName}
+                                    onChange={(e) => setSignUpData({ ...signUpData, lastName: e.target.value })}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="middleName">Middle Name (Optional)</label>
+                            <input
+                                id="middleName"
+                                type="text"
+                                className="form-control"
+                                placeholder="Middle name"
+                                value={signUpData.middleName}
+                                onChange={(e) => setSignUpData({ ...signUpData, middleName: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="idNumber">ID Number</label>
+                            <input
+                                id="idNumber"
+                                type="text"
+                                className="form-control"
+                                placeholder="Your student ID"
+                                value={signUpData.idNumber}
+                                onChange={(e) => setSignUpData({ ...signUpData, idNumber: e.target.value })}
+                                required
+                            />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="college">College</label>
+                                <input
+                                    id="college"
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Your college"
+                                    value={signUpData.college}
+                                    onChange={(e) => setSignUpData({ ...signUpData, college: e.target.value })}
+                                    required
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="course">Course</label>
+                                <input
+                                    id="course"
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Your course"
+                                    value={signUpData.course}
+                                    onChange={(e) => setSignUpData({ ...signUpData, course: e.target.value })}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="year">Year/Section</label>
+                            <input
+                                id="year"
+                                type="text"
+                                className="form-control"
+                                placeholder="e.g., 2nd Year - A"
+                                value={signUpData.year}
+                                onChange={(e) => setSignUpData({ ...signUpData, year: e.target.value })}
+                                required
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="signup-password">Password</label>
+                            <div style={{ position: 'relative' }}>
+                                <FiLock size={16} style={{
+                                    position: 'absolute', left: 14, top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    color: 'var(--color-text-muted)', pointerEvents: 'none'
+                                }} />
+                                <input
+                                    id="signup-password"
+                                    type={showSignUpPassword ? "text" : "password"}
+                                    className="form-control"
+                                    placeholder="Create a password"
+                                    value={signUpData.password}
+                                    onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
+                                    required
+                                    style={{ paddingLeft: 40, paddingRight: 40 }}
+                                    autoComplete="new-password"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSignUpPassword(!showSignUpPassword)}
+                                    style={{
+                                        position: 'absolute', right: 14, top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none', border: 'none',
+                                        color: 'var(--color-text-muted)', cursor: 'pointer',
+                                        padding: 0, display: 'flex', alignItems: 'center'
+                                    }}
+                                    aria-label={showSignUpPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showSignUpPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="confirmPassword">Confirm Password</label>
+                            <div style={{ position: 'relative' }}>
+                                <FiLock size={16} style={{
+                                    position: 'absolute', left: 14, top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    color: 'var(--color-text-muted)', pointerEvents: 'none'
+                                }} />
+                                <input
+                                    id="confirmPassword"
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    className="form-control"
+                                    placeholder="Confirm your password"
+                                    value={signUpData.confirmPassword}
+                                    onChange={(e) => setSignUpData({ ...signUpData, confirmPassword: e.target.value })}
+                                    required
+                                    style={{ paddingLeft: 40, paddingRight: 40 }}
+                                    autoComplete="new-password"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    style={{
+                                        position: 'absolute', right: 14, top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none', border: 'none',
+                                        color: 'var(--color-text-muted)', cursor: 'pointer',
+                                        padding: 0, display: 'flex', alignItems: 'center'
+                                    }}
+                                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showConfirmPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                                </button>
+                            </div>
+                        </div>
+
+                        <button
+                            id="signup-submit-btn"
+                            type="submit"
+                            className="btn btn-primary w-full btn-lg"
+                            disabled={loadingSignUp}
+                            style={{ marginTop: 16 }}
+                        >
+                            {loadingSignUp ? 'Creating Account…' : 'Sign Up'}
+                        </button>
+                    </form>
                 </div>
             </div>
         </main>
     );
 }
+
