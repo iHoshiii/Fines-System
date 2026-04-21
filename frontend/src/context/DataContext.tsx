@@ -48,7 +48,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         try {
             let query = supabase
                 .from('fines')
-                .select('*, student:profiles!student_id(full_name, student_id_number, college, course, year_section), issuer:profiles!issued_by(full_name, organization_id)')
+                .select('*, student:profiles!student_id(full_name, student_id_number, college, course, year_section), issuer:profiles!issued_by(full_name, role, organization_id)')
                 .order('created_at', { ascending: false });
 
             if (profile.role === 'student') {
