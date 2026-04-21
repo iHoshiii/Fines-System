@@ -59,7 +59,7 @@ export default function ReportsPage() {
     const unpaidAmount = fines.filter(f => f.status === 'unpaid').reduce((s, f) => s + Number(f.amount), 0);
 
     const downloadCSV = () => {
-        const headers = ['Student Name', 'ID Number', 'Total Fines', 'Paid', 'Unpaid', 'Total Amount (₱)', 'Outstanding (₱)'];
+        const headers = ['Student Name', 'ID Number', 'Total Fines', 'Paid', 'Unpaid', 'Total Amount (₱)', 'Balance (₱)'];
         const rows = reportData.map(r => [
             r.student, r.studentId, r.totalFines, r.paid, r.unpaid,
             r.totalAmount.toFixed(2), r.unpaidAmount.toFixed(2)
@@ -93,7 +93,7 @@ export default function ReportsPage() {
                     { label: 'Paid', value: totalPaid, color: 'var(--color-success)' },
                     { label: 'Unpaid', value: totalUnpaid, color: 'var(--color-danger)' },
                     { label: 'Total Amount', value: `₱${totalAmount.toFixed(2)}`, color: 'var(--color-primary)' },
-                    { label: 'Outstanding', value: `₱${unpaidAmount.toFixed(2)}`, color: 'var(--color-danger)' },
+                    { label: 'Balance', value: `₱${unpaidAmount.toFixed(2)}`, color: 'var(--color-danger)' },
                 ].map(s => (
                     <div key={s.label} className="stat-card">
                         <div>
@@ -129,7 +129,7 @@ export default function ReportsPage() {
                                     <th>Paid</th>
                                     <th>Unpaid</th>
                                     <th>Total Amount</th>
-                                    <th>Outstanding</th>
+                                    <th>Balance</th>
                                 </tr>
                             </thead>
                             <tbody>
