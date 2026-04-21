@@ -17,8 +17,8 @@ export default function SettingsPage() {
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     // Form States
-    const [fullName, setFullName] = useState(profile?.full_name || '');
-    const [studentId, setStudentId] = useState(profile?.student_id_number || '');
+    const [fullName, setFullName] = useState(profile?.pending_full_name || profile?.full_name || '');
+    const [studentId, setStudentId] = useState(profile?.pending_student_id || profile?.student_id_number || '');
     const [college, setCollege] = useState(profile?.college || '');
     const [course, setCourse] = useState(profile?.course || '');
     const [yearSection, setYearSection] = useState(profile?.year_section || '');
@@ -31,12 +31,19 @@ export default function SettingsPage() {
         setSavingProfile(true);
         setMessage(null);
         try {
-            const updateData: Record<string, string> = { full_name: fullName };
+            const updateData: Record<string, string> = {};
             if (profile?.role === 'student') {
-                updateData.student_id_number = studentId;
+                if (fullName.trim() !== profile.full_name) updateData.pending_full_name = fullName.trim();
+                else updateData.pending_full_name = null; // Clear if reverted
+
+                if (studentId.trim() !== profile.student_id_number) updateData.pending_student_id = studentId.trim();
+                else updateData.pending_student_id = null; // Clear if reverted
+
                 updateData.college = college;
                 updateData.course = course;
                 updateData.year_section = yearSection;
+            } else {
+                updateData.full_name = fullName;
             }
 
             const { error } = await supabase
@@ -193,7 +200,10 @@ export default function SettingsPage() {
 
                         <form onSubmit={handleUpdateProfile} className="flex-col gap-md">
                             <div className="form-group">
-                                <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Full Legal Name</label>
+                                <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>
+                                    Full Legal Name
+                                    {profile.pending_full_name && <span className="text-xs" style={{ color: 'var(--color-accent)', marginLeft: 8 }}>(Pending Approval)</span>}
+                                </label>
                                 <input
                                     type="text"
                                     className="form-control"
@@ -201,15 +211,17 @@ export default function SettingsPage() {
                                     onChange={(e) => setFullName(e.target.value)}
                                     required
                                     placeholder="Enter your full name"
-                                    disabled={profile.role === 'student'}
                                 />
-                                {profile.role === 'student' && <p className="text-xs text-muted mt-xs">Contact Admin for approval to change Name.</p>}
+                                {profile.role === 'student' && <p className="text-xs text-muted mt-xs">Changes require Admin approval.</p>}
                             </div>
 
                             {profile.role === 'student' && (
                                 <div className="form-col gap-md">
                                     <div className="form-group">
-                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Student ID Number</label>
+                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>
+                                            Student ID Number
+                                            {profile.pending_student_id && <span className="text-xs" style={{ color: 'var(--color-accent)', marginLeft: 8 }}>(Pending Approval)</span>}
+                                        </label>
                                         <div className="search-bar" style={{ borderRadius: 'var(--radius-md)', padding: '0 14px', background: 'var(--color-bg)' }}>
                                             <FiHash size={14} />
                                             <input
@@ -220,10 +232,9 @@ export default function SettingsPage() {
                                                 value={studentId}
                                                 onChange={(e) => setStudentId(e.target.value)}
                                                 required
-                                                disabled
                                             />
                                         </div>
-                                        <p className="text-xs text-muted mt-xs">Contact Admin for approval to change ID Number.</p>
+                                        <p className="text-xs text-muted mt-xs">Changes require Admin approval.</p>
                                     </div>
                                     <div className="form-grid">
                                         <div className="form-group">

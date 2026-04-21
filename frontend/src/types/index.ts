@@ -12,11 +12,13 @@ export interface Profile {
     id: string;
     full_name: string;
     role: UserRole;
-    student_id_number?: string;
+    student_id_number?: string | null;
     organization_id?: string;
     organization?: Organization;
-    email?: string;
-    college?: string;
+    email?: string | null;
+    pending_full_name?: string | null;
+    pending_student_id?: string | null;
+    college?: string | null;
     course?: string;
     year_section?: string;
 }
