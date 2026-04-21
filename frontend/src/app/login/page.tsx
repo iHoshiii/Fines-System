@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { FiMail, FiLock, FiAlertCircle, FiShield } from 'react-icons/fi';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { FiAlertCircle, FiEye, FiEyeOff, FiLock, FiMail, FiShield } from 'react-icons/fi';
 
 export default function LoginPage() {
     const { signIn, user, loading } = useAuth();
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loadingSignIn, setLoadingSignIn] = useState(false);
 
@@ -112,16 +114,52 @@ export default function LoginPage() {
                                 }} />
                                 <input
                                     id="password"
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     className="form-control"
                                     placeholder="Enter your password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    style={{ paddingLeft: 40 }}
+                                    style={{ paddingLeft: 40, paddingRight: 40 }}
                                     autoComplete="current-password"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    style={{
+                                        position: 'absolute', right: 14, top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none', border: 'none',
+                                        color: 'var(--color-text-muted)', cursor: 'pointer',
+                                        padding: 0, display: 'flex', alignItems: 'center'
+                                    }}
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                                </button>
                             </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={rememberMe}
+                                    onChange={(e) => setRememberMe(e.target.checked)}
+                                    style={{ margin: 0 }}
+                                />
+                                Remember me
+                            </label>
+                            <button
+                                type="button"
+                                onClick={() => setError("Password reset functionality coming soon!")}
+                                style={{
+                                    background: 'none', border: 'none', color: 'var(--color-primary)',
+                                    fontSize: 14, cursor: 'pointer', textDecoration: 'underline'
+                                }}
+                            >
+                                Forgot password?
+                            </button>
                         </div>
 
                         <button
