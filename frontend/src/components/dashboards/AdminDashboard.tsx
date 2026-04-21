@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { supabase } from '@/lib/supabaseClient';
-import { FiCheckCircle, FiAlertCircle, FiUsers, FiEye, FiX, FiPlus } from 'react-icons/fi';
+import { FiCheckCircle, FiAlertCircle, FiUsers, FiEye, FiX, FiPlus, FiSearch } from 'react-icons/fi';
 import { format } from 'date-fns';
 
 export default function AdminDashboard() {
@@ -13,9 +13,7 @@ export default function AdminDashboard() {
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [showModal, setShowModal] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [showDescModal, setShowDescModal] = useState(false);
     const [showPayModal, setShowPayModal] = useState(false);
-    const [newDesc, setNewDesc] = useState('');
     const [isCustomDesc, setIsCustomDesc] = useState(false);
     const [fineDescription, setFineDescription] = useState('');
     const [fineAmount, setFineAmount] = useState(0);
@@ -23,13 +21,7 @@ export default function AdminDashboard() {
     const [updatingPayment, setUpdatingPayment] = useState(false);
     const [payStatus, setPayStatus] = useState<'paid' | 'unpaid'>('paid');
     const [selectedFineIds, setSelectedFineIds] = useState<string[]>([]);
-
-    const handleAddDescription = () => {
-        if (!newDesc.trim()) return;
-        addDescriptionOption(newDesc.trim());
-        setNewDesc('');
-        setShowDescModal(false);
-    };
+    const [searchQuery, setSearchQuery] = useState('');
 
     const handleSaveFine = async () => {
         if (!selectedStudent || !fineDescription.trim() || fineAmount <= 0) return;
@@ -66,18 +58,29 @@ export default function AdminDashboard() {
                 student: fine.student,
                 totalAmount: 0,
                 count: 0,
-                status: 'paid',
-                lastDate: fine.created_at,
-                description: fine.description
+                paid: 0,
+                unpaid: 0,
             };
         }
         acc[studentId].totalAmount += Number(fine.amount);
         acc[studentId].count += 1;
-        if (fine.status === 'unpaid') acc[studentId].status = 'unpaid';
+        if (fine.status === 'paid') acc[studentId].paid += Number(fine.amount);
+        if (fine.status === 'unpaid') acc[studentId].unpaid += Number(fine.amount);
         return acc;
     }, {});
 
     const displayFines = Object.values(groupedFines);
+    const filteredFines = displayFines.filter((summary: any) => {
+        const s = summary.student || {};
+        const term = searchQuery.toLowerCase();
+        return (
+            (s.full_name || '').toLowerCase().includes(term) ||
+            (s.student_id_number || '').toLowerCase().includes(term) ||
+            (s.college || '').toLowerCase().includes(term) ||
+            (s.course || '').toLowerCase().includes(term) ||
+            (s.year_section || '').toLowerCase().includes(term)
+        );
+    });
     const unpaidFines = (fines || []).filter((f: any) => f.status === 'unpaid');
     const paidFines = (fines || []).filter((f: any) => f.status === 'paid');
     const selectedStudentFines = (fines || []).filter((f: any) => f.student_id === selectedStudent?.id);
@@ -126,9 +129,18 @@ export default function AdminDashboard() {
                     <p>Welcome to the System Admin Dashboard. Overview of all system-wide fines.</p>
                 </div>
                 <div className="flex gap-sm">
-                    <button className="btn btn-ghost" onClick={() => setShowDescModal(true)}>
-                        <FiPlus size={16} /> Add Description
-                    </button>
+                </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+                <div className="search-bar">
+                    <FiSearch size={16} />
+                    <input
+                        type="text"
+                        placeholder="Search by name, ID, college, course, year..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                    />
                 </div>
             </div>
 
@@ -172,7 +184,6 @@ export default function AdminDashboard() {
             <div className="table-container" style={{ marginTop: 24 }}>
                 <div className="table-header">
                     <span className="table-title">Student Fines Summary</span>
-                    <span className="text-sm text-muted">Total sum per student (System-wide)</span>
                 </div>
                 <div className="table-wrapper">
                     {loading && displayFines.length === 0 ? (
@@ -184,16 +195,17 @@ export default function AdminDashboard() {
                             <thead>
                                 <tr>
                                     <th>Student</th>
-                                    <th>Latest Fine</th>
+                                    <th>College</th>
+                                    <th>Course</th>
                                     <th>Count</th>
                                     <th>Total Amount</th>
-                                    <th>Status</th>
-                                    <th>Latest Date</th>
+                                    <th>Paid</th>
+                                    <th>Unpaid</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {displayFines.map((summary: any) => (
+                                {filteredFines.map((summary: any) => (
                                     <tr key={summary.id}>
                                         <td>
                                             <div className="flex align-center gap-sm">
@@ -206,13 +218,21 @@ export default function AdminDashboard() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>{summary.description}</td>
+                                        <td>{(summary.student as any)?.college || '—'}</td>
+                                        <td>
+                                            <p className="text-sm" style={{ fontWeight: 600 }}>{(summary.student as any)?.course || '—'}</p>
+                                            <p className="text-xs text-muted">{(summary.student as any)?.year_section || '—'}</p>
+                                        </td>
                                         <td>{summary.count}</td>
-                                        <td style={{ fontWeight: 700, color: summary.status === 'unpaid' ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                                        <td style={{ fontWeight: 700 }}>
                                             ₱{Number(summary.totalAmount).toFixed(2)}
                                         </td>
-                                        <td><span className={`badge badge-${summary.status}`}>{summary.status}</span></td>
-                                        <td className="text-sm text-muted">{format(new Date(summary.lastDate), 'MMM d, yyyy')}</td>
+                                        <td style={{ color: 'var(--color-success)', fontWeight: 600 }}>
+                                            ₱{Number(summary.paid).toFixed(2)}
+                                        </td>
+                                        <td style={{ color: 'var(--color-danger)', fontWeight: 600 }}>
+                                            ₱{Number(summary.unpaid).toFixed(2)}
+                                        </td>
                                         <td>
                                             <div className="flex gap-xs">
                                                 <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedStudent(summary); setShowModal(true); }}>
@@ -406,41 +426,7 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             )}
-            {/* Add Description Template Modal */}
-            {showDescModal && (
-                <div className="modal-overlay" onClick={() => setShowDescModal(false)}>
-                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
-                        <div className="modal-header">
-                            <h3>Add Description Template</h3>
-                            <button className="btn btn-icon btn-ghost" onClick={() => setShowDescModal(false)}>
-                                <FiX size={18} />
-                            </button>
-                        </div>
-                        <div className="modal-body">
-                            <p className="text-sm text-muted mb-md">
-                                Add a common event or fine reason. This will appear as a suggestion when adding fines.
-                            </p>
-                            <div className="form-group">
-                                <label className="form-label">Description Text</label>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    value={newDesc}
-                                    onChange={e => setNewDesc(e.target.value)}
-                                    placeholder="e.g. Foundation Day Absence"
-                                    autoFocus
-                                />
-                            </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-ghost" onClick={() => setShowDescModal(false)}>Cancel</button>
-                            <button className="btn btn-primary" onClick={handleAddDescription}>
-                                <FiPlus size={15} /> Add Template
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+
         </div>
     );
 }
