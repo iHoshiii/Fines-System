@@ -42,3 +42,16 @@ export interface FineFormData {
     description: string;
     status: FineStatus;
 }
+
+export type NotificationType = 'fine_added' | 'fine_paid' | 'profile_approved' | 'profile_rejected';
+
+export interface Notification {
+    id: string;
+    user_id: string;
+    type: NotificationType;
+    title: string;
+    message: string;
+    read: boolean;
+    created_at: string;
+    related_id?: string; // ID of related fine or profile change
+}

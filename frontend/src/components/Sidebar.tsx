@@ -1,13 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/types';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import {
-    FiHome, FiUsers, FiDollarSign, FiBarChart2,
-    FiSettings, FiLogOut, FiGrid
+    FiBarChart2,
+    FiGrid,
+    FiHome,
+    FiLogOut,
+    FiSettings,
+    FiUsers
 } from 'react-icons/fi';
 
 interface NavItem {
@@ -58,6 +62,12 @@ const navItems: NavItem[] = [
         href: '/dashboard/users',
         icon: <FiUsers size={18} />,
         label: 'User Management',
+        roles: ['admin'],
+    },
+    {
+        href: '/dashboard/user-profile',
+        icon: <FiUsers size={18} />,
+        label: 'User Profile',
         roles: ['admin'],
     },
     {

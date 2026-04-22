@@ -23,16 +23,16 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. FINES TABLE
-CREATE TABLE IF NOT EXISTS fines (
+-- 4. NOTIFICATIONS TABLE
+CREATE TABLE IF NOT EXISTS notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  amount NUMERIC(10, 2) NOT NULL CHECK (amount > 0),
-  description TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'unpaid' CHECK (status IN ('paid', 'unpaid')),
-  issued_by UUID NOT NULL REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('fine_added', 'fine_paid', 'profile_approved', 'profile_rejected')),
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  read BOOLEAN NOT NULL DEFAULT false,
+  related_id UUID, -- ID of related fine or profile change
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ============================================================
@@ -93,6 +93,7 @@ $$ LANGUAGE sql SECURITY DEFINER;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- ----------------- PROFILES POLICIES -----------------
 DROP POLICY IF EXISTS "profiles_select_own" ON profiles;
@@ -146,6 +147,23 @@ CREATE POLICY "fines_update_managers" ON fines
 -- Managers can delete fines
 CREATE POLICY "fines_delete_managers" ON fines
   FOR DELETE USING ( get_my_role() IN ('admin', 'ncssc', 'college_org', 'sub_org') );
+
+-- ----------------- NOTIFICATIONS POLICIES -----------------
+DROP POLICY IF EXISTS "notifications_select_own" ON notifications;
+DROP POLICY IF EXISTS "notifications_insert_system" ON notifications;
+DROP POLICY IF EXISTS "notifications_update_own" ON notifications;
+
+-- Users can view their own notifications
+CREATE POLICY "notifications_select_own" ON notifications
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- System/managers can insert notifications
+CREATE POLICY "notifications_insert_system" ON notifications
+  FOR INSERT WITH CHECK ( get_my_role() IN ('admin', 'ncssc', 'college_org', 'sub_org') );
+
+-- Users can update their own notifications (mark as read)
+CREATE POLICY "notifications_update_own" ON notifications
+  FOR UPDATE USING (auth.uid() = user_id);
 
 -- ----------------- ORGANIZATIONS POLICIES -----------------
 DROP POLICY IF EXISTS "orgs_select_all" ON organizations;
