@@ -3,7 +3,17 @@
 import { supabase } from '@/lib/supabaseClient';
 import { Profile } from '@/types';
 import { useEffect, useState } from 'react';
-import { FiCheck, FiSearch, FiUsers, FiX } from 'react-icons/fi';
+import { FiCheck, FiClock, FiSearch, FiUsers, FiX } from 'react-icons/fi';
+
+interface LogEntry {
+    id: string;
+    userName: string;
+    action: 'approved' | 'rejected';
+    field: string;
+    oldValue: string;
+    newValue: string;
+    timestamp: Date;
+}
 
 export default function UserProfilePage() {
     const [pendingUsers, setPendingUsers] = useState<Profile[]>([]);
@@ -13,6 +23,8 @@ export default function UserProfilePage() {
     const ITEMS_PER_PAGE = 15;
     const [success, setSuccess] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [logs, setLogs] = useState<LogEntry[]>([]);
+    const [showLogsModal, setShowLogsModal] = useState(false);
 
     useEffect(() => {
         fetchPendingUsers();
@@ -43,7 +55,12 @@ export default function UserProfilePage() {
         setLoading(true);
         setError(null);
         try {
-            const updatePayload: any = { pending_full_name: null, pending_student_id: null };
+            const updatePayload: {
+                pending_full_name: null;
+                pending_student_id: null;
+                full_name?: string;
+                student_id_number?: string;
+            } = { pending_full_name: null, pending_student_id: null };
             if (approve) {
                 if (user.pending_full_name) updatePayload.full_name = user.pending_full_name;
                 if (user.pending_student_id) updatePayload.student_id_number = user.pending_student_id;
@@ -51,10 +68,38 @@ export default function UserProfilePage() {
             const { error } = await supabase.from('profiles').update(updatePayload).eq('id', user.id);
             if (error) throw error;
             setSuccess(approve ? `Approved changes for ${user.full_name}` : `Rejected changes for ${user.full_name}`);
+            
+            // Add log entries
+            const newLogs: LogEntry[] = [];
+            if (user.pending_full_name) {
+                newLogs.push({
+                    id: `${user.id}-name-${Date.now()}`,
+                    userName: user.full_name,
+                    action: approve ? 'approved' : 'rejected',
+                    field: 'Full Name',
+                    oldValue: user.full_name,
+                    newValue: user.pending_full_name,
+                    timestamp: new Date()
+                });
+            }
+            if (user.pending_student_id) {
+                newLogs.push({
+                    id: `${user.id}-id-${Date.now()}`,
+                    userName: user.full_name,
+                    action: approve ? 'approved' : 'rejected',
+                    field: 'Student ID',
+                    oldValue: user.student_id_number || 'None',
+                    newValue: user.pending_student_id,
+                    timestamp: new Date()
+                });
+            }
+            setLogs(prev => [...newLogs, ...prev].slice(0, 100)); // Keep last 100 entries
+            
             fetchPendingUsers();
             setTimeout(() => setSuccess(null), 3000);
-        } catch (e: any) {
-            setError(e.message || 'An error occurred while processing the request.');
+        } catch (e: unknown) {
+            const error = e as Error;
+            setError(error.message || 'An error occurred while processing the request.');
         }
         setLoading(false);
     };
@@ -66,6 +111,14 @@ export default function UserProfilePage() {
                     <h2>User Profile Management</h2>
                     <p>Review and approve pending profile update requests.</p>
                 </div>
+                <button 
+                    className="btn btn-secondary" 
+                    onClick={() => setShowLogsModal(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                >
+                    <FiClock size={16} />
+                    Logs ({logs.length})
+                </button>
             </div>
 
             {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
@@ -195,6 +248,54 @@ export default function UserProfilePage() {
                     >
                         Next
                     </button>
+                </div>
+            )}
+
+            {showLogsModal && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowLogsModal(false)}>
+                    <div className="modal">
+                        <div className="modal-header">
+                            <h3>Approval History</h3>
+                            <button className="btn btn-icon btn-ghost" onClick={() => setShowLogsModal(false)}>
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            {logs.length === 0 ? (
+                                <div className="empty-state">
+                                    <FiClock />
+                                    <h4>No approval history</h4>
+                                    <p>Actions will appear here as you approve or reject profile changes.</p>
+                                </div>
+                            ) : (
+                                <div className="flex-col gap-md">
+                                    {logs.map(log => (
+                                        <div key={log.id} className="flex-between p-sm" style={{ 
+                                            background: 'var(--color-bg)', 
+                                            borderRadius: 'var(--radius-md)', 
+                                            border: '1px solid var(--color-border)' 
+                                        }}>
+                                            <div>
+                                                <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                                                    {log.userName}
+                                                </div>
+                                                <div className="text-sm text-muted">
+                                                    {log.field}: <span style={{ textDecoration: 'line-through' }}>{log.oldValue}</span> → {log.newValue}
+                                                </div>
+                                                <div className="text-sm text-muted" style={{ marginTop: 4 }}>
+                                                    {log.timestamp.toLocaleString()}
+                                                </div>
+                                            </div>
+                                            <div className={`badge ${log.action === 'approved' ? 'badge-paid' : 'badge-unpaid'}`}>
+                                                {log.action === 'approved' ? <FiCheck size={12} /> : <FiX size={12} />}
+                                                {log.action}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
