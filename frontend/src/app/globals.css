@@ -503,6 +503,18 @@ textarea {
   transform: translateY(-1px);
 }
 
+.btn-success {
+  background: var(--color-success);
+  color: #fff;
+  border: 2px solid var(--color-success);
+}
+
+.btn-success:hover {
+  background: #16a34a;
+  border-color: #16a34a;
+  transform: translateY(-1px);
+}
+
 .btn-ghost {
   background: transparent;
   color: var(--color-text-secondary);

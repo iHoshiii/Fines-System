@@ -59,6 +59,41 @@ export default function SettingsPage() {
 
             if (error) throw error;
 
+            // Send notification to student if they requested changes
+            if (profile?.role === 'student' && (updateData.pending_full_name || updateData.pending_student_id)) {
+                const changes: string[] = [];
+                if (updateData.pending_full_name) changes.push(`name to "${updateData.pending_full_name}"`);
+                if (updateData.pending_student_id) changes.push(`student ID to "${updateData.pending_student_id}"`);
+
+                const notificationData = {
+                    user_id: profile.id,
+                    type: 'profile_change_requested',
+                    title: 'Profile Change Requested',
+                    message: `You requested to change your ${changes.join(' and ')}. Your request is pending admin approval.`,
+                    read: false
+                };
+
+                await supabase.from('notifications').insert(notificationData);
+
+                // Send notification to all admins
+                const { data: admins } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('role', 'admin');
+
+                if (admins && admins.length > 0) {
+                    const adminNotifications = admins.map(admin => ({
+                        user_id: admin.id,
+                        type: 'profile_change_pending',
+                        title: 'Profile Change Request',
+                        message: `${profile.full_name} (${profile.student_id_number || profile.email}) requested to change their ${changes.join(' and ')}.`,
+                        read: false
+                    }));
+
+                    await supabase.from('notifications').insert(adminNotifications);
+                }
+            }
+
             await refreshProfile();
             setMessage({ type: 'success', text: 'Profile changes saved successfully!' });
         } catch (error: any) {

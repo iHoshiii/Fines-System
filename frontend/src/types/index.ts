@@ -43,7 +43,7 @@ export interface FineFormData {
     status: FineStatus;
 }
 
-export type NotificationType = 'fine_added' | 'fine_paid' | 'profile_approved' | 'profile_rejected';
+export type NotificationType = 'fine_added' | 'fine_paid' | 'profile_approved' | 'profile_rejected' | 'profile_change_requested' | 'profile_change_pending';
 
 export interface Notification {
     id: string;
