@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { Fine, Notification } from '@/types';
-import { FiDollarSign, FiCheckCircle, FiAlertCircle, FiBell, FiClock } from 'react-icons/fi';
 import { format } from 'date-fns';
+import { useEffect, useState } from 'react';
+import { FiAlertCircle, FiBell, FiCheckCircle, FiClock } from 'react-icons/fi';
 
 export default function StudentDashboard() {
     const { profile } = useAuth();
