@@ -3,14 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { Fine } from '@/types';
-import { FiDollarSign, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import { Fine, Notification } from '@/types';
+import { FiDollarSign, FiCheckCircle, FiAlertCircle, FiBell, FiClock } from 'react-icons/fi';
 import { format } from 'date-fns';
 
 export default function StudentDashboard() {
     const { profile } = useAuth();
     const [fines, setFines] = useState<Fine[]>([]);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'overview' | 'notifications'>('overview');
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 15;
 
@@ -22,22 +24,56 @@ export default function StudentDashboard() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const { data } = await supabase
+            // Fetch fines
+            const { data: finesData } = await supabase
                 .from('fines')
                 .select('*, issuer:profiles!issued_by(full_name, role)')
                 .eq('student_id', profile!.id)
                 .order('created_at', { ascending: false });
-            setFines(data || []);
+            setFines(finesData || []);
+
+            // Fetch notifications
+            const { data: notificationsData } = await supabase
+                .from('notifications')
+                .select('*')
+                .eq('user_id', profile!.id)
+                .order('created_at', { ascending: false });
+            setNotifications(notificationsData || []);
         } finally {
             setLoading(false);
         }
     };
 
-    const unpaidFines = fines.filter(f => f.status === 'unpaid');
-    const paidFines = fines.filter(f => f.status === 'paid');
-    const totalAmount = fines.reduce((sum, f) => sum + f.amount, 0);
-    const paidAmount = paidFines.reduce((sum, f) => sum + f.amount, 0);
-    const unpaidAmount = unpaidFines.reduce((sum, f) => sum + f.amount, 0);
+    const markAsRead = async (notificationId: string) => {
+        try {
+            await supabase
+                .from('notifications')
+                .update({ read: true })
+                .eq('id', notificationId);
+            
+            setNotifications(prev => 
+                prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+            );
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    };
+
+    const markAllAsRead = async () => {
+        try {
+            const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+            if (unreadIds.length === 0) return;
+
+            await supabase
+                .from('notifications')
+                .update({ read: true })
+                .in('id', unreadIds);
+            
+            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        } catch (error) {
+            console.error('Error marking all notifications as read:', error);
+        }
+    };
 
     const greetingTime = () => {
         const h = new Date().getHours();
@@ -66,6 +102,12 @@ export default function StudentDashboard() {
     const totalPages = Math.ceil(summaryData.length / ITEMS_PER_PAGE);
     const paginatedSummary = summaryData.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
+    const unpaidFines = fines.filter(f => f.status === 'unpaid');
+    const paidFines = fines.filter(f => f.status === 'paid');
+    const totalAmount = fines.reduce((sum, f) => sum + f.amount, 0);
+    const paidAmount = paidFines.reduce((sum, f) => sum + f.amount, 0);
+    const unpaidAmount = unpaidFines.reduce((sum, f) => sum + f.amount, 0);
+
     return (
         <div>
             {/* Page Header */}
@@ -76,8 +118,34 @@ export default function StudentDashboard() {
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            {loading ? (
+            {/* Tab Navigation */}
+            <div className="tab-navigation" style={{ marginBottom: 24 }}>
+                <button 
+                    className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('overview')}
+                >
+                    Overview
+                </button>
+                <button 
+                    className={`tab-button ${activeTab === 'notifications' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('notifications')}
+                    style={{ position: 'relative' }}
+                >
+                    <FiBell size={16} style={{ marginRight: 8 }} />
+                    Notifications
+                    {notifications.filter(n => !n.read).length > 0 && (
+                        <span className="notification-badge">
+                            {notifications.filter(n => !n.read).length}
+                        </span>
+                    )}
+                </button>
+            </div>
+
+            {/* Tab Content */}
+            {activeTab === 'overview' ? (
+                <div>
+                    {/* Stats Cards */}
+                    {loading ? (
                 <div className="stats-grid">
                     {[1, 2, 3, 4, 5].map(i => (
                         <div key={i} className="stat-card">
@@ -223,6 +291,74 @@ export default function StudentDashboard() {
                     <button className="btn btn-ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</button>
                     <span className="text-sm">Page {currentPage} of {totalPages}</span>
                     <button className="btn btn-ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</button>
+                </div>
+            )}
+                </div>
+            ) : (
+                /* Notifications Tab */
+                <div>
+                    {/* Notifications Header */}
+                    <div className="page-header" style={{ marginBottom: 16 }}>
+                        <div className="page-header-left">
+                            <h3>Notifications</h3>
+                            <p>Stay updated with your account activities and approvals.</p>
+                        </div>
+                        {notifications.filter(n => !n.read).length > 0 && (
+                            <button 
+                                className="btn btn-secondary"
+                                onClick={markAllAsRead}
+                                style={{ fontSize: '14px', padding: '8px 16px' }}
+                            >
+                                Mark All as Read
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Notifications List */}
+                    <div className="notifications-container">
+                        {loading ? (
+                            <div style={{ padding: 32, textAlign: 'center' }}>
+                                <div className="animate-pulse" style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>
+                                    Loading notifications…
+                                </div>
+                            </div>
+                        ) : notifications.length === 0 ? (
+                            <div className="empty-state">
+                                <FiBell size={48} />
+                                <h4>No notifications</h4>
+                                <p>You'll receive notifications for fines, payments, and profile changes here.</p>
+                            </div>
+                        ) : (
+                            <div className="notifications-list">
+                                {notifications.map((notification) => (
+                                    <div 
+                                        key={notification.id} 
+                                        className={`notification-item ${!notification.read ? 'unread' : ''}`}
+                                        onClick={() => !notification.read && markAsRead(notification.id)}
+                                        style={{ cursor: !notification.read ? 'pointer' : 'default' }}
+                                    >
+                                        <div className="notification-icon">
+                                            {notification.type === 'fine_added' && <FiAlertCircle style={{ color: 'var(--color-danger)' }} />}
+                                            {notification.type === 'fine_paid' && <FiCheckCircle style={{ color: 'var(--color-success)' }} />}
+                                            {notification.type === 'profile_approved' && <FiCheckCircle style={{ color: 'var(--color-success)' }} />}
+                                            {notification.type === 'profile_rejected' && <FiAlertCircle style={{ color: 'var(--color-danger)' }} />}
+                                        </div>
+                                        <div className="notification-content">
+                                            <div className="notification-header">
+                                                <h4>{notification.title}</h4>
+                                                <span className="notification-time">
+                                                    <FiClock size={12} style={{ marginRight: 4 }} />
+                                                    {format(new Date(notification.created_at), 'MMM dd, yyyy HH:mm')}
+                                                </span>
+                                            </div>
+                                            <p className="notification-message">{notification.message}</p>
+                                        </div>
+                                        {!notification.read && <div className="notification-dot"></div>}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>

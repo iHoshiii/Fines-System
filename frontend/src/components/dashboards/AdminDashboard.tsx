@@ -36,6 +36,15 @@ export default function AdminDashboard() {
             });
             if (error) throw error;
 
+            // Create notification for the student
+            await supabase.from('notifications').insert({
+                user_id: selectedStudent.id,
+                type: 'fine_added',
+                title: 'New Fine Added',
+                message: `A fine of ₱${fineAmount.toFixed(2)} has been added to your account for: ${fineDescription.trim()}`,
+                read: false
+            });
+
             // Auto-add to templates
             if (isCustomDesc && fineDescription.trim() && !descriptionOptions.includes(fineDescription.trim())) {
                 addDescriptionOption(fineDescription.trim());
@@ -105,6 +114,22 @@ export default function AdminDashboard() {
                 .update({ status: payStatus })
                 .in('id', selectedFineIds);
             if (error) throw error;
+
+            // Create notifications for students if fines are marked as paid
+            if (payStatus === 'paid') {
+                const selectedFines = fines.filter(f => selectedFineIds.includes(f.id));
+                for (const fine of selectedFines) {
+                    await supabase.from('notifications').insert({
+                        user_id: fine.student_id,
+                        type: 'fine_paid',
+                        title: 'Fine Payment Confirmed',
+                        message: `Your fine of ₱${fine.amount.toFixed(2)} for "${fine.description}" has been marked as paid.`,
+                        read: false,
+                        related_id: fine.id
+                    });
+                }
+            }
+
             await refreshFines();
             setShowPayModal(false);
         } catch (e) {

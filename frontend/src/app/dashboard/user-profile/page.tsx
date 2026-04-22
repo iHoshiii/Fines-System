@@ -69,6 +69,19 @@ export default function UserProfilePage() {
             if (error) throw error;
             setSuccess(approve ? `Approved changes for ${user.full_name}` : `Rejected changes for ${user.full_name}`);
             
+            // Create notification for the student
+            const notificationData = {
+                user_id: user.id,
+                type: approve ? 'profile_approved' : 'profile_rejected',
+                title: approve ? 'Profile Changes Approved' : 'Profile Changes Rejected',
+                message: approve 
+                    ? `Your profile changes have been approved and updated.`
+                    : `Your profile changes have been rejected. Please contact an administrator for more information.`,
+                read: false
+            };
+            
+            await supabase.from('notifications').insert(notificationData);
+            
             // Add log entries
             const newLogs: LogEntry[] = [];
             if (user.pending_full_name) {
