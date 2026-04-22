@@ -3,7 +3,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { Profile, UserRole } from '@/types';
 import { useEffect, useState } from 'react';
-import { FiAlertCircle, FiEdit2, FiPlus, FiSave, FiSearch, FiUsers, FiX } from 'react-icons/fi';
+import { FiAlertCircle, FiCheck, FiClock, FiEdit2, FiPlus, FiSave, FiSearch, FiUsers, FiX } from 'react-icons/fi';
 
 const roleLabel: Record<UserRole, string> = {
     admin: 'Admin',
@@ -20,8 +20,19 @@ const roleBadge: Record<UserRole, string> = {
     sub_org: 'badge-role-sub_org',
 };
 
+interface LogEntry {
+    id: string;
+    userName: string;
+    action: 'approved' | 'rejected';
+    field: string;
+    oldValue: string;
+    newValue: string;
+    timestamp: Date;
+}
+
 export default function UsersPage() {
     const [users, setUsers] = useState<Profile[]>([]);
+    const [pendingUsers, setPendingUsers] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -33,8 +44,15 @@ export default function UsersPage() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
+    const [activeTab, setActiveTab] = useState<'users' | 'profiles'>('users');
+    const [logs, setLogs] = useState<LogEntry[]>([]);
+    const [showLogsModal, setShowLogsModal] = useState(false);
 
-    useEffect(() => { fetchUsers(); fetchOrgs(); }, []);
+    useEffect(() => { 
+        fetchUsers(); 
+        fetchPendingUsers();
+        loadLogsFromStorage();
+    }, []);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -43,9 +61,37 @@ export default function UsersPage() {
         setLoading(false);
     };
 
+    const fetchPendingUsers = async () => {
+        const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .or('pending_full_name.not.is.null,pending_student_id.not.is.null')
+            .order('full_name');
+        setPendingUsers(data || []);
+    };
+
     const fetchOrgs = async () => {
         const { data } = await supabase.from('organizations').select('id, name').order('name');
         setOrgs(data || []);
+    };
+
+    const loadLogsFromStorage = () => {
+        const savedLogs = localStorage.getItem('admin_logs');
+        if (savedLogs) {
+            try {
+                const parsedLogs = JSON.parse(savedLogs).map((log: any) => ({
+                    ...log,
+                    timestamp: new Date(log.timestamp)
+                }));
+                setLogs(parsedLogs);
+            } catch (error) {
+                console.error('Error loading logs from storage:', error);
+            }
+        }
+    };
+
+    const saveLogsToStorage = (newLogs: LogEntry[]) => {
+        localStorage.setItem('admin_logs', JSON.stringify(newLogs));
     };
 
     const openAdd = () => {
@@ -117,12 +163,87 @@ export default function UsersPage() {
         }
     };
 
-    const filtered = users.filter(u =>
-        search === '' ||
-        u.full_name.toLowerCase().includes(search.toLowerCase()) ||
-        u.student_id_number?.toLowerCase().includes(search.toLowerCase()) ||
-        u.role.toLowerCase().includes(search.toLowerCase())
-    );
+    const handleApproval = async (user: Profile, approve: boolean) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const updatePayload: {
+                pending_full_name: null;
+                pending_student_id: null;
+                full_name?: string;
+                student_id_number?: string;
+            } = { pending_full_name: null, pending_student_id: null };
+            if (approve) {
+                if (user.pending_full_name) updatePayload.full_name = user.pending_full_name;
+                if (user.pending_student_id) updatePayload.student_id_number = user.pending_student_id;
+            }
+            const { error } = await supabase.from('profiles').update(updatePayload).eq('id', user.id);
+            if (error) throw error;
+            setSuccess(approve ? `Approved changes for ${user.full_name}` : `Rejected changes for ${user.full_name}`);
+            
+            // Create notification for the student
+            const notificationData = {
+                user_id: user.id,
+                type: approve ? 'profile_approved' : 'profile_rejected',
+                title: approve ? 'Profile Changes Approved' : 'Profile Changes Rejected',
+                message: approve 
+                    ? `Your profile changes have been approved and updated.`
+                    : `Your profile changes have been rejected. Please contact an administrator for more information.`,
+                read: false
+            };
+            
+            await supabase.from('notifications').insert(notificationData);
+            
+            // Add log entries
+            const newLogs: LogEntry[] = [];
+            if (user.pending_full_name) {
+                newLogs.push({
+                    id: `${user.id}-name-${Date.now()}`,
+                    userName: user.full_name,
+                    action: approve ? 'approved' : 'rejected',
+                    field: 'Full Name',
+                    oldValue: user.full_name,
+                    newValue: user.pending_full_name,
+                    timestamp: new Date()
+                });
+            }
+            if (user.pending_student_id) {
+                newLogs.push({
+                    id: `${user.id}-id-${Date.now()}`,
+                    userName: user.full_name,
+                    action: approve ? 'approved' : 'rejected',
+                    field: 'Student ID',
+                    oldValue: user.student_id_number || 'None',
+                    newValue: user.pending_student_id,
+                    timestamp: new Date()
+                });
+            }
+            const updatedLogs = [...newLogs, ...logs].slice(0, 100); // Keep last 100 entries
+            setLogs(updatedLogs);
+            saveLogsToStorage(updatedLogs);
+            
+            fetchPendingUsers();
+            setTimeout(() => setSuccess(null), 3000);
+        } catch (e: unknown) {
+            const error = e as Error;
+            setError(error.message || 'An error occurred while processing the request.');
+        }
+        setLoading(false);
+    };
+
+    // Filter and pagination logic
+    const filtered = activeTab === 'users' 
+        ? users.filter(u => 
+            u.full_name.toLowerCase().includes(search.toLowerCase()) ||
+            (u.student_id_number && u.student_id_number.toLowerCase().includes(search.toLowerCase())) ||
+            u.role.toLowerCase().includes(search.toLowerCase()) ||
+            (u.email && u.email.toLowerCase().includes(search.toLowerCase()))
+        )
+        : pendingUsers.filter(u => 
+            u.full_name.toLowerCase().includes(search.toLowerCase()) ||
+            (u.student_id_number && u.student_id_number.toLowerCase().includes(search.toLowerCase())) ||
+            (u.email && u.email.toLowerCase().includes(search.toLowerCase()))
+        );
 
     const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
     const paginatedUsers = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -132,21 +253,54 @@ export default function UsersPage() {
             <div className="page-header">
                 <div className="page-header-left">
                     <h2>User Management</h2>
-                    <p>Create and manage system user accounts.</p>
+                    <p>Create and manage system user accounts and profile approvals.</p>
                 </div>
-                <button id="add-user-btn" className="btn btn-primary" onClick={openAdd}>
-                    <FiPlus size={16} /> Add User
+                {activeTab === 'users' && (
+                    <button id="add-user-btn" className="btn btn-primary" onClick={openAdd}>
+                        <FiPlus size={16} /> Add User
+                    </button>
+                )}
+                {activeTab === 'profiles' && (
+                    <button 
+                        className="btn btn-secondary" 
+                        onClick={() => setShowLogsModal(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                    >
+                        <FiClock size={16} />
+                        Logs ({logs.length})
+                    </button>
+                )}
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="tab-navigation" style={{ marginBottom: 24 }}>
+                <button 
+                    className={`tab-button ${activeTab === 'users' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('users')}
+                >
+                    <FiUsers size={16} style={{ marginRight: 8 }} />
+                    Users
+                </button>
+                <button 
+                    className={`tab-button ${activeTab === 'profiles' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('profiles')}
+                >
+                    <FiCheck size={16} style={{ marginRight: 8 }} />
+                    Profile Approvals
                 </button>
             </div>
 
-            {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
+            {/* Tab Content */}
+            {activeTab === 'users' ? (
+                <div>
+                    {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
 
-            <div style={{ marginBottom: 16 }}>
-                <div className="search-bar">
-                    <FiSearch size={16} />
-                    <input id="user-search" type="text" placeholder="Search by name, ID, or role…" value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} />
-                </div>
-            </div>
+                    <div style={{ marginBottom: 16 }}>
+                        <div className="search-bar">
+                            <FiSearch size={16} />
+                            <input id="user-search" type="text" placeholder="Search by name, ID, or role…" value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} />
+                        </div>
+                    </div>
 
             <div className="table-container">
                 <div className="table-header">
@@ -261,6 +415,163 @@ export default function UsersPage() {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+                </div>
+            ) : (
+                /* Profile Approvals Tab */
+                <div>
+                    {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
+                    {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+
+                    <div style={{ marginBottom: 16 }}>
+                        <div className="search-bar">
+                            <FiSearch size={16} />
+                            <input 
+                                type="text" 
+                                placeholder="Search pending profiles…" 
+                                value={search} 
+                                onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} 
+                            />
+                        </div>
+                    </div>
+
+                    <div className="table-container">
+                        <div className="table-header">
+                            <span className="table-title">Pending Profile Changes</span>
+                            <span className="text-sm text-muted">{filtered.length} pending</span>
+                        </div>
+                        <div className="table-wrapper">
+                            {loading ? (
+                                <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading…</div>
+                            ) : filtered.length === 0 ? (
+                                <div className="empty-state">
+                                    <FiCheck />
+                                    <h4>No pending approvals</h4>
+                                    <p>All profile changes have been processed.</p>
+                                </div>
+                            ) : (
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Current Info</th>
+                                            <th>Requested Changes</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {paginatedUsers.map((user) => (
+                                            <tr key={user.id}>
+                                                <td>
+                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                        <strong>{user.full_name}</strong>
+                                                        <small style={{ color: 'var(--color-text-muted)' }}>
+                                                            {user.student_id_number || user.email}
+                                                        </small>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div style={{ fontSize: '13px' }}>
+                                                        <div><strong>Name:</strong> {user.full_name}</div>
+                                                        <div><strong>ID:</strong> {user.student_id_number || 'None'}</div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div style={{ fontSize: '13px' }}>
+                                                        {user.pending_full_name && (
+                                                            <div style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                                                                Name: {user.pending_full_name}
+                                                            </div>
+                                                        )}
+                                                        {user.pending_student_id && (
+                                                            <div style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                                                                ID: {user.pending_student_id}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div style={{ display: 'flex', gap: 8 }}>
+                                                        <button 
+                                                            className="btn btn-success btn-sm" 
+                                                            onClick={() => handleApproval(user, true)}
+                                                            disabled={loading}
+                                                        >
+                                                            <FiCheck size={14} /> Approve
+                                                        </button>
+                                                        <button 
+                                                            className="btn btn-danger btn-sm" 
+                                                            onClick={() => handleApproval(user, false)}
+                                                            disabled={loading}
+                                                        >
+                                                            <FiX size={14} /> Reject
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
+
+                    {totalPages > 1 && (
+                        <div className="flex-center mt-md gap-sm" style={{ justifyContent: 'center', marginTop: '16px' }}>
+                            <button className="btn btn-ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</button>
+                            <span className="text-sm">Page {currentPage} of {totalPages}</span>
+                            <button className="btn btn-ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</button>
+                        </div>
+                    )}
+
+                    {/* Logs Modal */}
+                    {showLogsModal && (
+                        <div className="modal-overlay" onClick={() => setShowLogsModal(false)}>
+                            <div className="modal" style={{ maxWidth: '800px' }}>
+                                <div className="modal-header">
+                                    <h3>Approval Logs</h3>
+                                    <button className="btn btn-icon btn-ghost" onClick={() => setShowLogsModal(false)}>
+                                        <FiX size={18} />
+                                    </button>
+                                </div>
+                                <div className="modal-body">
+                                    {logs.length === 0 ? (
+                                        <div className="empty-state">
+                                            <FiClock />
+                                            <h4>No approval history</h4>
+                                            <p>Actions will appear here as you approve or reject profile changes.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="logs-list" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                            {logs.map((log) => (
+                                                <div key={log.id} className="log-entry" style={{ 
+                                                    padding: '12px', 
+                                                    border: '1px solid var(--color-border)', 
+                                                    borderRadius: 'var(--radius-md)',
+                                                    marginBottom: '8px',
+                                                    background: log.action === 'approved' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'
+                                                }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                                                        <div>
+                                                            <strong>{log.userName}</strong> - {log.field} {log.action}
+                                                        </div>
+                                                        <small style={{ color: 'var(--color-text-muted)' }}>
+                                                            {log.timestamp.toLocaleString()}
+                                                        </small>
+                                                    </div>
+                                                    <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                                                        <div>From: <strong>{log.oldValue}</strong></div>
+                                                        <div>To: <strong>{log.newValue}</strong></div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
