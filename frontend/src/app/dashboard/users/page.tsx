@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Profile, UserRole } from '@/types';
-import { FiPlus, FiEdit2, FiSearch, FiX, FiSave, FiAlertCircle, FiUsers } from 'react-icons/fi';
+import { useEffect, useState } from 'react';
+import { FiAlertCircle, FiEdit2, FiPlus, FiSave, FiSearch, FiUsers, FiX } from 'react-icons/fi';
 
 const roleLabel: Record<UserRole, string> = {
     admin: 'Admin',

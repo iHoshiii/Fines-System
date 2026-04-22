@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Profile } from '@/types';
-import { FiCheck, FiX, FiAlertCircle, FiUsers, FiSearch } from 'react-icons/fi';
+import { useEffect, useState } from 'react';
+import { FiCheck, FiSearch, FiUsers, FiX } from 'react-icons/fi';
 
 export default function UserProfilePage() {
     const [pendingUsers, setPendingUsers] = useState<Profile[]>([]);
