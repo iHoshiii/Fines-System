@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Fine, Notification } from '@/types';
 import { format } from 'date-fns';
 import { useEffect, useState } from 'react';
-import { FiAlertCircle, FiBell, FiCheckCircle, FiClock } from 'react-icons/fi';
+import { FiAlertCircle, FiBell, FiCheckCircle, FiClock, FiX } from 'react-icons/fi';
 
 export default function StudentDashboard() {
     const { profile } = useAuth();
@@ -72,6 +72,19 @@ export default function StudentDashboard() {
             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
         } catch (error) {
             console.error('Error marking all notifications as read:', error);
+        }
+    };
+
+    const handleDeleteNotification = async (notificationId: string) => {
+        try {
+            await supabase
+                .from('notifications')
+                .delete()
+                .eq('id', notificationId);
+        
+            setNotifications(prev => prev.filter(n => n.id !== notificationId));
+        } catch (error) {
+            console.error('Error deleting notification:', error);
         }
     };
 
@@ -334,22 +347,35 @@ export default function StudentDashboard() {
                                     <div 
                                         key={notification.id} 
                                         className={`notification-item ${!notification.read ? 'unread' : ''}`}
-                                        onClick={() => !notification.read && markAsRead(notification.id)}
-                                        style={{ cursor: !notification.read ? 'pointer' : 'default' }}
+                                        style={{ position: 'relative' }}
                                     >
                                         <div className="notification-icon">
                                             {notification.type === 'fine_added' && <FiAlertCircle style={{ color: 'var(--color-danger)' }} />}
                                             {notification.type === 'fine_paid' && <FiCheckCircle style={{ color: 'var(--color-success)' }} />}
                                             {notification.type === 'profile_approved' && <FiCheckCircle style={{ color: 'var(--color-success)' }} />}
                                             {notification.type === 'profile_rejected' && <FiAlertCircle style={{ color: 'var(--color-danger)' }} />}
+                                            {notification.type === 'profile_change_requested' && <FiClock style={{ color: 'var(--color-warning)' }} />}
                                         </div>
                                         <div className="notification-content">
                                             <div className="notification-header">
                                                 <h4>{notification.title}</h4>
-                                                <span className="notification-time">
-                                                    <FiClock size={12} style={{ marginRight: 4 }} />
-                                                    {format(new Date(notification.created_at), 'MMM dd, yyyy HH:mm')}
-                                                </span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span className="notification-time">
+                                                        <FiClock size={12} style={{ marginRight: 4 }} />
+                                                        {format(new Date(notification.created_at), 'MMM dd, yyyy HH:mm')}
+                                                    </span>
+                                                    <button 
+                                                        className="btn btn-ghost btn-icon" 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteNotification(notification.id);
+                                                        }}
+                                                        style={{ color: 'var(--color-danger)', padding: '4px' }}
+                                                        title="Delete notification"
+                                                    >
+                                                        <FiX size={14} />
+                                                    </button>
+                                                </div>
                                             </div>
                                             <p className="notification-message">{notification.message}</p>
                                         </div>

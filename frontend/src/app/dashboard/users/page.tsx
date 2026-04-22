@@ -83,7 +83,18 @@ export default function UsersPage() {
                     ...log,
                     timestamp: new Date(log.timestamp)
                 }));
-                setLogs(parsedLogs);
+                
+                // Filter out logs older than 1 month
+                const oneMonthAgo = new Date();
+                oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                const recentLogs = parsedLogs.filter((log: LogEntry) => log.timestamp > oneMonthAgo);
+                
+                setLogs(recentLogs);
+                
+                // Save cleaned logs back to storage
+                if (recentLogs.length !== parsedLogs.length) {
+                    saveLogsToStorage(recentLogs);
+                }
             } catch (error) {
                 console.error('Error loading logs from storage:', error);
             }
@@ -231,6 +242,12 @@ export default function UsersPage() {
         setLoading(false);
     };
 
+    const handleDeleteLog = (logId: string) => {
+        const updatedLogs = logs.filter(log => log.id !== logId);
+        setLogs(updatedLogs);
+        saveLogsToStorage(updatedLogs);
+    };
+
     // Filter and pagination logic
     const filtered = activeTab === 'users' 
         ? users.filter(u => 
@@ -284,9 +301,29 @@ export default function UsersPage() {
                 <button 
                     className={`tab-button ${activeTab === 'profiles' ? 'active' : ''}`}
                     onClick={() => setActiveTab('profiles')}
+                    style={{ position: 'relative' }}
                 >
                     <FiCheck size={16} style={{ marginRight: 8 }} />
                     Profile Approvals
+                    {pendingUsers.length > 0 && (
+                        <span className="notification-badge" style={{
+                            position: 'absolute',
+                            top: '-8px',
+                            right: '-8px',
+                            background: 'var(--color-danger)',
+                            color: 'white',
+                            borderRadius: '50%',
+                            width: '20px',
+                            height: '20px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '11px',
+                            fontWeight: '600'
+                        }}>
+                            {pendingUsers.length}
+                        </span>
+                    )}
                 </button>
             </div>
 
@@ -556,9 +593,19 @@ export default function UsersPage() {
                                                         <div>
                                                             <strong>{log.userName}</strong> - {log.field} {log.action}
                                                         </div>
-                                                        <small style={{ color: 'var(--color-text-muted)' }}>
-                                                            {log.timestamp.toLocaleString()}
-                                                        </small>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <small style={{ color: 'var(--color-text-muted)' }}>
+                                                                {log.timestamp.toLocaleString()}
+                                                            </small>
+                                                            <button 
+                                                                className="btn btn-ghost btn-icon" 
+                                                                onClick={() => handleDeleteLog(log.id)}
+                                                                style={{ color: 'var(--color-danger)', padding: '4px' }}
+                                                                title="Delete log entry"
+                                                            >
+                                                                <FiX size={14} />
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                                                         <div>From: <strong>{log.oldValue}</strong></div>
