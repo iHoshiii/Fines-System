@@ -168,7 +168,7 @@ export default function LoginPage() {
 
     return (
         <main className="login-page">
-            <div className="login-card-wrapper">
+            <div className="login-card-wrapper" style={{ maxWidth: isSignUp ? '700px' : '440px' }}>
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
                     <h1 style={{ 
                         fontSize: '2.5rem', 
@@ -395,13 +395,10 @@ export default function LoginPage() {
                             <button
                                 type="button"
                                 onClick={() => setIsSignUp(false)}
-                                style={{
-                                    background: 'none', border: 'none', color: 'var(--color-primary)',
-                                    fontSize: 14, cursor: 'pointer', textDecoration: 'underline',
-                                    marginTop: 16, width: '100%', textAlign: 'center'
-                                }}
+                                className="btn btn-secondary w-full"
+                                style={{ marginTop: 16 }}
                             >
-                                Already have an account? Sign In
+                                Sign In
                             </button>
                         </form>
                     ) : (
@@ -500,18 +497,15 @@ export default function LoginPage() {
                             <button
                                 type="button"
                                 onClick={() => setIsSignUp(true)}
-                                style={{
-                                    background: 'none', border: 'none', color: 'var(--color-primary)',
-                                    fontSize: 14, cursor: 'pointer', textDecoration: 'underline',
-                                    marginTop: 16, width: '100%', textAlign: 'center'
-                                }}
+                                className="btn btn-secondary w-full"
+                                style={{ marginTop: 16 }}
                             >
-                                Don't have an account? Sign Up
+                                Sign Up
                             </button>
                         </form>
                     )}
                 </div>
-            </div>
+                </div>
         </main>
     );
 }
