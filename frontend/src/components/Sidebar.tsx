@@ -61,6 +61,12 @@ const navItems: NavItem[] = [
         roles: ['admin'],
     },
     {
+        href: '/dashboard/user-profile',
+        icon: <FiUsers size={18} />,
+        label: 'User Profile',
+        roles: ['admin'],
+    },
+    {
         href: '/dashboard/settings',
         icon: <FiSettings size={18} />,
         label: 'Settings',
