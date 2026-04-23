@@ -264,7 +264,7 @@ export default function LoginPage() {
 
             {/* Main Content */}
             <main className="main-content">
-                <div className="page-content" style={{ padding: '40px 20px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div className="page-content" style={{ padding: '10px 0px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <div className="animated-header" style={{ marginBottom: 32, width: '100%' }}>
                         <div className="animated-text">Nueva Vizcaya State University</div>
                     </div> 
@@ -329,7 +329,7 @@ export default function LoginPage() {
                 )}
 
                 {activeTab === 'login' && (
-                    <div className="login-card">
+                    <div className="login-card" style={{ marginTop: '65px', marginLeft: 'auto', marginRight: 'auto', width: '400px'}}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 24 }}>
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>
                                 Sign In
@@ -362,7 +362,7 @@ export default function LoginPage() {
                                 </div>
                             </div>
 
-                            <div className="form-group">
+                            <div className="form-group" >
                                 <label className="form-label" htmlFor="password">Password</label>
                                 <div style={{ position: 'relative' }}>
                                     <FiLock size={16} style={{
