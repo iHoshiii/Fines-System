@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase/supabaseClient';
 import { FiDollarSign, FiCheckCircle, FiAlertCircle, FiUsers, FiEye, FiX, FiPlus } from 'react-icons/fi';
 import { format } from 'date-fns';
 

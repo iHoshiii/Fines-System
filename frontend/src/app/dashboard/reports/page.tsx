@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase/supabaseClient';
 import { Fine } from '@/types';
 import { FiBarChart2, FiDownload } from 'react-icons/fi';
 import { format } from 'date-fns';
