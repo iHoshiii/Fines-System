@@ -180,22 +180,26 @@ export default function LoginPage() {
                 
                 .animated-header {
                     background: linear-gradient(to right, #FFD700, #FFF700);
-                    height: 48px;
+                    height: 20vh;
+                    min-height: 180px;
                     overflow: hidden;
                     display: flex;
                     align-items: center;
+                    justify-content: center;
                     position: relative;
-                    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+                    box-shadow: 0 4px 18px rgba(255, 215, 0, 0.3);
+                    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
                 }
                 
                 .animated-text {
                     color: #006837;
-                    font-size: 18px;
-                    font-weight: 700;
+                    font-size: clamp(2rem, 5vw, 4.2rem);
+                    font-weight: 800;
                     white-space: nowrap;
-                    animation: scrollText 8s linear infinite;
+                    animation: scrollText 10s linear infinite;
                     font-family: 'Montserrat', sans-serif;
-                    letter-spacing: 1px;
+                    letter-spacing: 0.8px;
+                    line-height: 1;
                 }
             `}</style>
             {/* Green Sidebar */}
@@ -260,11 +264,10 @@ export default function LoginPage() {
 
             {/* Main Content */}
             <main className="main-content">
-                <div className="page-content" style={{ padding: '40px 20px' }}>
-                    <div className="animated-header" style={{ marginBottom: 40 }}>
+                <div className="page-content" style={{ padding: '40px 20px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div className="animated-header" style={{ marginBottom: 32, width: '100%' }}>
                         <div className="animated-text">Nueva Vizcaya State University</div>
-                        <div className="animated-text">Nueva Vizcaya State University</div>
-                    </div>
+                    </div> 
 
                     {/* Error display */}
                     {error && (
@@ -275,55 +278,7 @@ export default function LoginPage() {
                     )}
 
                     {/* Tab Content */}
-                    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-                {/* Tab Navigation */}
-                <div style={{
-                    display: 'flex',
-                    gap: 8,
-                    marginBottom: 32,
-                    borderBottom: '2px solid var(--color-border)',
-                    padding: '0 0 16px 0'
-                }}>
-                    {(['how-to-use', 'login', 'signup'] as const).map((tab) => {
-                        const labels = {
-                            'how-to-use': 'How to use?',
-                            'login': 'Log in',
-                            'signup': 'Sign up'
-                        };
-                        
-                        return (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                style={{
-                                    padding: '12px 20px',
-                                    border: 'none',
-                                    background: 'none',
-                                    fontSize: 16,
-                                    fontWeight: activeTab === tab ? 600 : 500,
-                                    color: activeTab === tab ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                                    cursor: 'pointer',
-                                    borderBottom: activeTab === tab ? '3px solid var(--color-primary)' : 'none',
-                                    transition: 'all var(--transition-base)',
-                                    position: 'relative',
-                                    bottom: '-2px'
-                                }}
-                            >
-                                {labels[tab]}
-                            </button>
-                        );
-                    })}
-                </div>
-
-                {/* Error display */}
-                {error && (
-                    <div className="alert alert-error" style={{ marginBottom: 16 }}>
-                        <FiAlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-                        <span>{error}</span>
-                    </div>
-                )}
-
-                {/* Tab Content */}
+                    <div style={{ width: '100%', maxWidth: '720px', margin: '0 auto' }}>
                 {activeTab === 'how-to-use' && (
                     <div style={{ padding: '20px', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-md)' }}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24 }}>
