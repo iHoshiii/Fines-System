@@ -332,9 +332,6 @@ export default function LoginPage() {
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>
                                 Sign In
                             </h2>
-                            <p style={{ textAlign: 'center', margin: 0, fontSize: 14, color: 'var(--color-text-secondary)' }}>
-                                Welcome back to NVSU Fines System
-                            </p>
                         </div>
 
                         <form className="login-form" onSubmit={handleSubmit}>
@@ -437,9 +434,6 @@ export default function LoginPage() {
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>
                                 Create an Account
                             </h2>
-                            <p style={{ textAlign: 'center', margin: 0, fontSize: 14, color: 'var(--color-text-secondary)' }}>
-                                Join the NVSU Fines System
-                            </p>
                         </div>
 
                         <form className="login-form" onSubmit={handleSignUp}>
