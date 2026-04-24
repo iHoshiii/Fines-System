@@ -12,13 +12,13 @@ export default function LoginPage() {
     const [activeTab, setActiveTab] = useState<'how-to-use' | 'login' | 'signup'>('login');
     const [howToUseTab, setHowToUseTab] = useState<'Student' | 'Organization' | 'Admin'>('Student');
     
-    // Login state
+    // Login variables
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     
-    // Sign up state
+    // Sign up variables
     const [signUpData, setSignUpData] = useState({
         email: '',
         firstName: '',
