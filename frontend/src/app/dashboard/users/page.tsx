@@ -1,6 +1,6 @@
 'use client';
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase/supabaseClient';
 import { Profile, UserRole } from '@/types';
 import { useEffect, useState } from 'react';
 import { FiAlertCircle, FiCheck, FiClock, FiEdit2, FiPlus, FiSave, FiSearch, FiUsers, FiX } from 'react-icons/fi';

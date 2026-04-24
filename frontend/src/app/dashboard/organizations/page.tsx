@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase/supabaseClient';
 import { Profile } from '@/types';
 import { FiGrid, FiSearch, FiShield } from 'react-icons/fi';
 
