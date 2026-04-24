@@ -202,7 +202,9 @@ export default function LoginPage() {
             <aside className="sidebar">
                 {/* Brand */}
                 <div className="sidebar-brand">
-                    <div className="sidebar-brand-logo">N</div>
+                    <div className="sidebar-brand-logo" style={{ background: 'white', padding: 2 }}>
+                        <img src="/NVSUlogos/nvsu.png" alt="NVSU Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    </div>
                     <div className="sidebar-brand-text">
                         <h1>NVSU Fines</h1>
                         <span>Management System</span>
