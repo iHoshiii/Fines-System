@@ -256,13 +256,13 @@ export default function LoginPage() {
                                             key={sub}
                                             onClick={() => setHowToUseTab(sub)}
                                             style={{
-                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                background: howToUseTab === sub ? 'rgba(255,215,0,0.15)' : 'none',
+                                                border: 'none', cursor: 'pointer',
                                                 textAlign: 'left', padding: '8px 16px',
                                                 borderRadius: 'var(--radius-md)',
                                                 fontSize: 13,
                                                 color: howToUseTab === sub ? 'white' : 'rgba(255,255,255,0.6)',
                                                 fontWeight: howToUseTab === sub ? 600 : 400,
-                                                background: howToUseTab === sub ? 'rgba(255,215,0,0.15)' : 'none',
                                                 borderLeft: howToUseTab === sub ? '3px solid #FFD700' : '3px solid transparent',
                                             }}
                                         >{sub}</button>
