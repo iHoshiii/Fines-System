@@ -3,13 +3,14 @@
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { FiAlertCircle, FiEye, FiEyeOff, FiInfo, FiLock, FiMail } from 'react-icons/fi';
 
 export default function LoginPage() {
     const { signIn, user, loading } = useAuth();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'how-to-use' | 'login' | 'signup'>('login');
+    const [howToUseTab, setHowToUseTab] = useState<'Student' | 'Organization' | 'Admin'>('Student');
     
     // Login state
     const [email, setEmail] = useState('');
@@ -223,8 +224,8 @@ export default function LoginPage() {
                         const isActive = activeTab === tab;
                         
                         return (
+                            <Fragment key={tab}>
                             <button
-                                key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`sidebar-link ${isActive ? 'active' : ''}`}
                                 style={{
@@ -248,6 +249,27 @@ export default function LoginPage() {
                                 {tab === 'signup' && <FiMail size={18} />}
                                 {labels[tab]}
                             </button>
+                            {tab === 'how-to-use' && activeTab === 'how-to-use' && (
+                                <div style={{ paddingLeft: 32, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    {(['Student', 'Organization', 'Admin'] as const).map((sub) => (
+                                        <button
+                                            key={sub}
+                                            onClick={() => setHowToUseTab(sub)}
+                                            style={{
+                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                textAlign: 'left', padding: '8px 16px',
+                                                borderRadius: 'var(--radius-md)',
+                                                fontSize: 13,
+                                                color: howToUseTab === sub ? 'white' : 'rgba(255,255,255,0.6)',
+                                                fontWeight: howToUseTab === sub ? 600 : 400,
+                                                background: howToUseTab === sub ? 'rgba(255,215,0,0.15)' : 'none',
+                                                borderLeft: howToUseTab === sub ? '3px solid #FFD700' : '3px solid transparent',
+                                            }}
+                                        >{sub}</button>
+                                    ))}
+                                </div>
+                            )}
+                            </Fragment>
                         );
                     })}
                 </nav>
@@ -273,7 +295,7 @@ export default function LoginPage() {
                 <div className="page-content" style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, backgroundImage: 'url(/NVSUlogos/nvsu2.jpg)', backgroundRepeat: 'no-repeat', backgroundSize: '100% 100%', backgroundPosition: 'center', position: 'relative' }}>
                     <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0, 104, 55, 0.65)', pointerEvents: 'none' }}></div>
 
-                    {/* Error display */}
+                    <div style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 24px' }}>
                     {error && (
                         <div className="alert alert-error" style={{ marginBottom: 24, maxWidth: '600px', margin: '0 auto 24px' }}>
                             <FiAlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
@@ -292,42 +314,14 @@ export default function LoginPage() {
                                     How to Use the NVSU Fines System
                                 </h3>
                                 <p style={{ color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-                                    Welcome to the Nueva Vizcaya State University Fines Management System. This platform helps students, faculty, and organizations manage fines efficiently.
+                                    Welcome to the Nueva Vizcaya State University Fines Management System.
                                 </p>
                             </div>
                         </div>
-                        
-                        <div style={{ display: 'grid', gap: 16 }}>
-                            <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: 'var(--radius-md)' }}>
-                                <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, color: 'var(--color-primary)' }}>For Students:</h4>
-                                <ul style={{ paddingLeft: 20, color: 'var(--color-text-secondary)', lineHeight: 1.8 }}>
-                                    <li><strong>View Fines:</strong> Check your outstanding fines and payment history</li>
-                                    <li><strong>Make Payments:</strong> Pay fines online through integrated payment methods</li>
-                                    <li><strong>Track Status:</strong> Monitor payment confirmations and fine settlements</li>
-                                    <li><strong>Receive Notifications:</strong> Get alerts about new fines and deadlines</li>
-                                </ul>
-                            </div>
-                            
-                            <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: 'var(--radius-md)' }}>
-                                <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, color: 'var(--color-primary)' }}>For Organizations:</h4>
-                                <ul style={{ paddingLeft: 20, color: 'var(--color-text-secondary)', lineHeight: 1.8 }}>
-                                    <li><strong>Manage Members:</strong> Add and manage organization members</li>
-                                    <li><strong>Issue Fines:</strong> Create and assign fines to members</li>
-                                    <li><strong>Monitor Payments:</strong> Track payment status across the organization</li>
-                                    <li><strong>Generate Reports:</strong> Create detailed financial reports</li>
-                                </ul>
-                            </div>
-                            
-                            <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: 'var(--radius-md)' }}>
-                                <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, color: 'var(--color-primary)' }}>Getting Started:</h4>
-                                <ol style={{ paddingLeft: 20, color: 'var(--color-text-secondary)', lineHeight: 1.8 }}>
-                                    <li>Sign up using your NVSU email address</li>
-                                    <li>Complete your profile information</li>
-                                    <li>Verify your account through email confirmation</li>
-                                    <li>Log in to access your dashboard</li>
-                                    <li>Navigate through the different sections as needed</li>
-                                </ol>
-                            </div>
+                        <div style={{ padding: '16px', backgroundColor: 'white', borderRadius: 'var(--radius-md)', minHeight: 100, color: 'var(--color-text-secondary)' }}>
+                            {howToUseTab === 'Student' && <p>Student tutorials coming soon.</p>}
+                            {howToUseTab === 'Organization' && <p>Organization tutorials coming soon.</p>}
+                            {howToUseTab === 'Admin' && <p>Admin tutorials coming soon.</p>}
                         </div>
                     </div>
                 )}
@@ -639,6 +633,8 @@ export default function LoginPage() {
                     </div>
                 )}
                 </div>
+                </div>
+
                 </div>
             </main>
         </div>
