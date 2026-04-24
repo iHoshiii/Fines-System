@@ -268,7 +268,8 @@ export default function LoginPage() {
                         <div className="animated-text">Nueva Vizcaya State University &nbsp;&nbsp;&nbsp;&nbsp;</div>
                     </div>
                 </div>
-                <div className="page-content" style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, backgroundImage: 'url(/NVSUlogos/nvsu2.jpg)', backgroundRepeat: 'no-repeat', backgroundSize: 'contain', backgroundPosition: 'center' }}>
+                <div className="page-content" style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, backgroundImage: 'url(/NVSUlogos/nvsu2.jpg)', backgroundRepeat: 'no-repeat', backgroundSize: '100% 100%', backgroundPosition: 'center', position: 'relative' }}>
+                    <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0, 104, 55, 0.65)', pointerEvents: 'none' }}></div>
 
                     {/* Error display */}
                     {error && (
