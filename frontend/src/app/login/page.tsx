@@ -169,38 +169,34 @@ export default function LoginPage() {
     return (
         <div className="app-layout">
             <style>{`
-                @keyframes scrollText {
-                    0% {
-                        transform: translateX(100%);
-                    }
-                    100% {
-                        transform: translateX(-100%);
-                    }
-                }
-                
-                .animated-header {
-                    background: linear-gradient(to right, #FFD700, #FFF700);
-                    height: 20vh;
-                    min-height: 180px;
-                    overflow: hidden;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    position: relative;
-                    box-shadow: 0 4px 18px rgba(255, 215, 0, 0.3);
-                    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-                }
-                
-                .animated-text {
-                    color: #006837;
-                    font-size: clamp(2rem, 5vw, 4.2rem);
-                    font-weight: 800;
-                    white-space: nowrap;
-                    animation: scrollText 10s linear infinite;
-                    font-family: 'Montserrat', sans-serif;
-                    letter-spacing: 0.8px;
-                    line-height: 1;
-                }
+        @keyframes scrollText {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .animated-header {
+            background: linear-gradient(to right, #FFD700, #FFF700);
+            height: 11vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            position: relative;
+            box-shadow: 0 4px 18px rgba(255, 215, 0, 0.3);
+        }
+        .marquee-wrapper {
+            display: flex;
+            white-space: nowrap;
+            animation: scrollText 10s linear infinite;
+        }
+        .animated-text {
+            color: #006837;
+            font-size: 3rem;
+            font-weight: 800;
+            padding-right: 50px;
+            font-family: 'Montserrat', sans-serif;
+            letter-spacing: 0.8px;
+            line-height: 1;
+        }
             `}</style>
             {/* Green Sidebar */}
             <aside className="sidebar">
@@ -216,11 +212,11 @@ export default function LoginPage() {
                 {/* Tab Navigation */}
                 <nav className="sidebar-nav">
                     <div className="sidebar-section-label">Access</div>
-                    {(['how-to-use', 'login', 'signup'] as const).map((tab) => {
+                    {(['login', 'signup', 'how-to-use', ] as const).map((tab) => {
                         const labels = {
-                            'how-to-use': 'How to use?',
                             'login': 'Log in',
-                            'signup': 'Sign up'
+                            'signup': 'Sign up',
+                            'how-to-use': 'How to use?',
                         };
                         const isActive = activeTab === tab;
                         
@@ -263,11 +259,16 @@ export default function LoginPage() {
             </aside>
 
             {/* Main Content */}
-            <main className="main-content">
-                <div className="page-content" style={{ padding: '10px 0px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div className="animated-header" style={{ marginBottom: 32, width: '100%' }}>
-                        <div className="animated-text">Nueva Vizcaya State University</div>
-                    </div> 
+            <main className="main-content" style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+                <div className="animated-header" style={{ width: '100%' }}>
+                    <div className="marquee-wrapper">
+                        <div className="animated-text">Nueva Vizcaya State University &nbsp;&nbsp;&nbsp;&nbsp;</div>
+                        <div className="animated-text">Nueva Vizcaya State University &nbsp;&nbsp;&nbsp;&nbsp;</div>
+                        <div className="animated-text">Nueva Vizcaya State University &nbsp;&nbsp;&nbsp;&nbsp;</div>
+                        <div className="animated-text">Nueva Vizcaya State University &nbsp;&nbsp;&nbsp;&nbsp;</div>
+                    </div>
+                </div>
+                <div className="page-content" style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
 
                     {/* Error display */}
                     {error && (
@@ -329,7 +330,7 @@ export default function LoginPage() {
                 )}
 
                 {activeTab === 'login' && (
-                    <div className="login-card" style={{ marginTop: '65px', marginLeft: 'auto', marginRight: 'auto', width: '400px'}}>
+                    <div className="login-card" style={{ marginLeft: 'auto', marginRight: 'auto', width: '400px'}}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 24 }}>
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>
                                 Sign In
