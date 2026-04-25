@@ -2,7 +2,8 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Fragment, useEffect, useState } from 'react';
+
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { FiAlertCircle, FiEye, FiEyeOff, FiInfo, FiLock, FiMail, FiMenu, FiX } from 'react-icons/fi';
 
 export default function LoginPage() {
@@ -11,6 +12,7 @@ export default function LoginPage() {
     const [activeTab, setActiveTab] = useState<'how-to-use' | 'login' | 'signup'>('login');
     const [howToUseTab, setHowToUseTab] = useState<'Student' | 'Organization' | 'Admin'>('Student');
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -66,7 +68,6 @@ export default function LoginPage() {
         if (!signUpData.email.endsWith('@nvsu.edu.ph')) { setError('Please use your NVSU email address (@nvsu.edu.ph)'); return; }
         if (signUpData.password !== signUpData.confirmPassword) { setError('Passwords do not match'); return; }
         if (signUpData.password.length < 6) { setError('Password must be at least 6 characters'); return; }
-
         setLoadingSignUp(true);
         const { error } = await signUp({
             email: signUpData.email,
@@ -358,6 +359,7 @@ export default function LoginPage() {
                                                 </div>
                                             </div>
                                         </div>
+
                                         <button id="signup-submit-btn" type="submit" className="btn btn-primary w-full btn-lg" disabled={loadingSignUp} style={{ marginTop: 16 }}>
                                             {loadingSignUp ? 'Creating Account…' : 'Sign Up'}
                                         </button>
