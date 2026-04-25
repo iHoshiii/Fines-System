@@ -87,7 +87,7 @@ export default function LoginPage() {
             setError('All fields are required');
             return;
         }
-        if (!signUpData.email.endsWith('@nvsu.edu.ph') && !signUpData.email.endsWith('@gmail.com')) {
+        if (!signUpData.email.endsWith('@nvsu.edu.ph')) {
             setError('Please use your NVSU email address (@nvsu.edu.ph)');
             return;
         }
