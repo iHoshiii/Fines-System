@@ -565,6 +565,9 @@ textarea {
   color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .form-control {
@@ -1374,6 +1377,12 @@ tbody tr:hover {
   }
 
   /* Login page content area padding */
+  /* Tighter form labels on mobile */
+  .form-label {
+    font-size: 11px;
+    letter-spacing: 0em;
+  }
+
   .login-page-content {
     padding: var(--space-md) !important;
     padding-top: 72px !important;
@@ -1505,6 +1514,12 @@ tbody tr:hover {
 @media (max-width: 480px) {
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .form-label {
+    font-size: 10px;
+    letter-spacing: 0;
+    text-transform: uppercase;
   }
 
   .btn-lg {
