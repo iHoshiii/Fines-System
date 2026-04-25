@@ -77,11 +77,16 @@ CREATE OR REPLACE TRIGGER fines_updated_at
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, role)
+  INSERT INTO public.profiles (id, full_name, role, student_id_number, college, course, year_section, email)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'full_name', 'New User'),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'student')
+    COALESCE(NEW.raw_user_meta_data->>'role', 'student'),
+    NEW.raw_user_meta_data->>'student_id_number',
+    NEW.raw_user_meta_data->>'college',
+    NEW.raw_user_meta_data->>'course',
+    NEW.raw_user_meta_data->>'year_section',
+    NEW.email
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
