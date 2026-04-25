@@ -1,41 +1,40 @@
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/lib/supabase/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { Fragment, useEffect, useState } from 'react';
 import { FiAlertCircle, FiEye, FiEyeOff, FiInfo, FiLock, FiMail } from 'react-icons/fi';
 
 export default function LoginPage() {
-    const { signIn, user, loading } = useAuth();
+    const { signIn, signUp, verifyOtp, user, loading } = useAuth();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'how-to-use' | 'login' | 'signup'>('login');
     const [howToUseTab, setHowToUseTab] = useState<'Student' | 'Organization' | 'Admin'>('Student');
-    
-    // Login variables
+
+    // Login state
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
-    
-    // Sign up variables
+
+    // Sign up state — Step 1
     const [signUpData, setSignUpData] = useState({
-        email: '',
-        firstName: '',
-        middleName: '',
-        lastName: '',
-        college: '',
-        course: '',
-        year: '',
-        password: '',
-        confirmPassword: ''
+        email: '', firstName: '', middleName: '', lastName: '',
+        college: '', course: '', year: '', password: '', confirmPassword: ''
     });
     const [showSignUpPassword, setShowSignUpPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    
+
+    // Sign up state — Step 2 (OTP)
+    const [signUpStep, setSignUpStep] = useState<1 | 2>(1);
+    const [otpCode, setOtpCode] = useState('');
+    const [pendingEmail, setPendingEmail] = useState('');
+
     const [error, setError] = useState<string | null>(null);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [loadingSignIn, setLoadingSignIn] = useState(false);
     const [loadingSignUp, setLoadingSignUp] = useState(false);
+    const [loadingOtp, setLoadingOtp] = useState(false);
 
     useEffect(() => {
         if (!loading && user) {
@@ -82,75 +81,64 @@ export default function LoginPage() {
         e.preventDefault();
         setError(null);
 
-        // Validation
-        if (!signUpData.email.trim() || !signUpData.firstName.trim() || !signUpData.lastName.trim() || 
-            !signUpData.college.trim() || !signUpData.course.trim() || 
+        if (!signUpData.email.trim() || !signUpData.firstName.trim() || !signUpData.lastName.trim() ||
+            !signUpData.college.trim() || !signUpData.course.trim() ||
             !signUpData.year.trim() || !signUpData.password.trim()) {
             setError('All fields are required');
             return;
         }
-        
-        if (!signUpData.email.includes('@nvsu.edu.ph')) {
-            setError('Please use your NVSU email address');
+        if (!signUpData.email.endsWith('@nvsu.edu.ph') && !signUpData.email.endsWith('@gmail.com')) {
+            setError('Please use your NVSU email address (@nvsu.edu.ph)');
             return;
         }
-        
         if (signUpData.password !== signUpData.confirmPassword) {
             setError('Passwords do not match');
             return;
         }
-        
         if (signUpData.password.length < 6) {
-            setError('Password must be at least 6 characters long');
+            setError('Password must be at least 6 characters');
             return;
         }
 
         setLoadingSignUp(true);
-        
-        try {
-            // Create user in Supabase Auth
-            const { data, error: signUpError } = await supabase.auth.signUp({
-                email: signUpData.email,
-                password: signUpData.password,
-                options: {
-                    data: {
-                        full_name: `${signUpData.firstName} ${signUpData.middleName} ${signUpData.lastName}`.trim(),
-                        role: 'student',
-                        college: signUpData.college,
-                        course: signUpData.course,
-                        year_section: signUpData.year
-                    }
-                }
-            });
+        const { error } = await signUp({
+            email: signUpData.email,
+            password: signUpData.password,
+            fullName: `${signUpData.firstName} ${signUpData.middleName} ${signUpData.lastName}`.replace(/\s+/g, ' ').trim(),
+            studentId: '',
+            college: signUpData.college,
+            course: signUpData.course,
+            year: signUpData.year,
+        });
+        setLoadingSignUp(false);
 
-            if (signUpError) {
-                if (signUpError.message.includes('already registered')) {
-                    setError('An account with this email already exists');
-                } else {
-                    setError(signUpError.message);
-                }
-                return;
-            }
-
-            setError('Account created successfully! Please check your email to confirm your account.');
-            // Reset form after successful signup
-            setSignUpData({
-                email: '',
-                firstName: '',
-                middleName: '',
-                lastName: '',
-                college: '',
-                course: '',
-                year: '',
-                password: '',
-                confirmPassword: ''
-            });
-            
-        } catch (err) {
-            setError('An error occurred during sign up');
-        } finally {
-            setLoadingSignUp(false);
+        if (error) {
+            if (error.includes('already registered')) setError('An account with this email already exists');
+            else if (error.includes('restricted to @nvsu.edu.ph')) setError('Only @nvsu.edu.ph email addresses are allowed to register.');
+            else setError(error);
+            return;
         }
+
+        setPendingEmail(signUpData.email);
+        setSignUpStep(2);
+        setSuccessMsg(`An 8-digit code was sent to ${signUpData.email}`);
+    };
+
+    const handleVerifyOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+        if (otpCode.length !== 8) {
+            setError('Please enter the 8-digit code');
+            return;
+        }
+        setLoadingOtp(true);
+        const { error } = await verifyOtp(pendingEmail, otpCode);
+        setLoadingOtp(false);
+        if (error) {
+            setError('Invalid or expired code. Please try again.');
+            return;
+        }
+        router.replace('/dashboard');
     };
 
     if (loading) {
@@ -302,6 +290,11 @@ export default function LoginPage() {
                             <span>{error}</span>
                         </div>
                     )}
+                    {successMsg && (
+                        <div className="alert alert-success" style={{ marginBottom: 24, maxWidth: '600px', margin: '0 auto 24px' }}>
+                            <span>{successMsg}</span>
+                        </div>
+                    )}
 
                     {/* Tab Content */}
                     <div style={{ width: '100%', maxWidth: '720px', margin: '0 auto' }}>
@@ -428,7 +421,7 @@ export default function LoginPage() {
                     </div>
                 )}
 
-                {activeTab === 'signup' && (
+                {activeTab === 'signup' && signUpStep === 1 && (
                     <div className="login-card">
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 24 }}>
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>
@@ -622,6 +615,49 @@ export default function LoginPage() {
                                 style={{ marginTop: 16 }}
                             >
                                 {loadingSignUp ? 'Creating Account…' : 'Sign Up'}
+                            </button>
+                        </form>
+                    </div>
+                )}
+
+                {activeTab === 'signup' && signUpStep === 2 && (
+                    <div className="login-card" style={{ marginLeft: 'auto', marginRight: 'auto', width: '400px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>Verify Your Email</h2>
+                            <p style={{ textAlign: 'center', margin: 0, fontSize: 14, color: 'var(--color-text-secondary)' }}>
+                                Enter the 6-digit code sent to <strong>{pendingEmail}</strong>
+                            </p>
+                        </div>
+                        <form className="login-form" onSubmit={handleVerifyOtp}>
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="otp-code">Verification Code</label>
+                                <input
+                                    id="otp-code"
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={8}
+                                    className="form-control"
+                                    placeholder="00000000"
+                                    value={otpCode}
+                                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                                    style={{ textAlign: 'center', fontSize: 24, letterSpacing: 8 }}
+                                    autoFocus
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="btn btn-primary w-full btn-lg"
+                                disabled={loadingOtp}
+                                style={{ marginTop: 8 }}
+                            >
+                                {loadingOtp ? 'Verifying…' : 'Verify & Continue'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setSignUpStep(1); setOtpCode(''); setError(null); setSuccessMsg(null); }}
+                                style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: 14, cursor: 'pointer', textDecoration: 'underline', marginTop: 8 }}
+                            >
+                                ← Back to sign up
                             </button>
                         </form>
                     </div>

@@ -19,6 +19,7 @@ interface AuthContextType {
         course: string;
         year: string;
     }) => Promise<{ error: string | null }>;
+    verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>;
     signOut: () => Promise<void>;
     refreshProfile: () => Promise<void>;
 }
@@ -95,12 +96,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: error ? error.message : null };
     };
 
+    const verifyOtp = async (email: string, token: string) => {
+        const { error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' });
+        return { error: error ? error.message : null };
+    };
+
     const signOut = async () => {
         await supabase.auth.signOut();
     };
 
     return (
-        <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut, refreshProfile }}>
+        <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, verifyOtp, signOut, refreshProfile }}>
             {children}
         </AuthContext.Provider>
     );
