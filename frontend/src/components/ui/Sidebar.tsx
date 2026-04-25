@@ -74,13 +74,7 @@ const navItems: NavItem[] = [
     },
 ];
 
-const roleLabel: Record<UserRole, string> = {
-    admin: 'System Admin',
-    student: 'Student',
-    ncssc: 'NCSSC',
-    college_org: 'College Org',
-    sub_org: 'Sub-Organization',
-};
+import { ROLE_LABEL } from '@/utils/formatters';
 
 export default function Sidebar() {
     const { profile, signOut } = useAuth();
@@ -183,7 +177,7 @@ export default function Sidebar() {
                         <div className="sidebar-user-avatar">{initials}</div>
                         <div className="sidebar-user-info">
                             <p>{profile.full_name}</p>
-                            <span>{roleLabel[profile.role]}</span>
+                            <span>{ROLE_LABEL[profile.role]}</span>
                         </div>
                         <button
                             className="sidebar-logout-btn"

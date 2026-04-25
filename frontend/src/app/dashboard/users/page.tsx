@@ -4,21 +4,9 @@ import { supabase } from '@/lib/supabase/supabaseClient';
 import { Profile, UserRole } from '@/types';
 import { useEffect, useState } from 'react';
 import { FiAlertCircle, FiCheck, FiClock, FiEdit2, FiPlus, FiSave, FiSearch, FiUsers, FiX } from 'react-icons/fi';
-
-const roleLabel: Record<UserRole, string> = {
-    admin: 'Admin',
-    student: 'Student',
-    ncssc: 'NCSSC',
-    college_org: 'College Org',
-    sub_org: 'Sub-Org',
-};
-const roleBadge: Record<UserRole, string> = {
-    admin: 'badge-role-admin',
-    student: 'badge-role-student',
-    ncssc: 'badge-role-ncssc',
-    college_org: 'badge-role-college_org',
-    sub_org: 'badge-role-sub_org',
-};
+import { ROLE_LABEL, ROLE_BADGE } from '@/utils/formatters';
+import Pagination from '@/components/ui/Pagination';
+import PageHeader from '@/components/ui/PageHeader';
 
 interface LogEntry {
     id: string;
@@ -380,7 +368,7 @@ export default function UsersPage() {
                                                 <span style={{ fontWeight: 600 }}>{u.full_name}</span>
                                             </div>
                                         </td>
-                                        <td><span className={`badge ${roleBadge[u.role]}`}>{roleLabel[u.role]}</span></td>
+                                        <td><span className={`badge ${ROLE_BADGE[u.role]}`}>{ROLE_LABEL[u.role]}</span></td>
                                         <td className="text-muted">{u.student_id_number || '—'}</td>
                                         <td>
                                             <button className="btn btn-icon btn-ghost" onClick={() => openEdit(u)} title="Edit">
@@ -396,11 +384,7 @@ export default function UsersPage() {
             </div>
 
             {totalPages > 1 && (
-                <div className="flex-center mt-md gap-sm" style={{ justifyContent: 'center', marginTop: '16px' }}>
-                    <button className="btn btn-ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</button>
-                    <span className="text-sm">Page {currentPage} of {totalPages}</span>
-                    <button className="btn btn-ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</button>
-                </div>
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
             )}
 
             {showModal && (
@@ -555,11 +539,7 @@ export default function UsersPage() {
                     </div>
 
                     {totalPages > 1 && (
-                        <div className="flex-center mt-md gap-sm" style={{ justifyContent: 'center', marginTop: '16px' }}>
-                            <button className="btn btn-ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</button>
-                            <span className="text-sm">Page {currentPage} of {totalPages}</span>
-                            <button className="btn btn-ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</button>
-                        </div>
+                        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
                     )}
 
                     {/* Logs Modal */}

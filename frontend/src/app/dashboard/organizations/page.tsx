@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import { Profile } from '@/types';
-import { FiGrid, FiSearch, FiShield } from 'react-icons/fi';
+import { FiGrid, FiShield } from 'react-icons/fi';
+import SearchBar from '@/components/ui/SearchBar';
+import PageHeader from '@/components/ui/PageHeader';
 
 export default function OrganizationsPage() {
     const [orgAccounts, setOrgAccounts] = useState<Profile[]>([]);
@@ -27,33 +29,22 @@ export default function OrganizationsPage() {
     const typeBadge: Record<string, string> = { ncssc: 'badge-role-ncssc', college_org: 'badge-role-college_org', sub_org: 'badge-role-sub_org' };
 
     const filtered = orgAccounts.filter(o => {
+        if (!search.trim()) return true;
         const term = search.toLowerCase();
-        return search === '' ||
+        return (
             (o.full_name || '').toLowerCase().includes(term) ||
             (o.email || '').toLowerCase().includes(term) ||
             (o.college || '').toLowerCase().includes(term) ||
-            (typeLabel[o.role] || '').toLowerCase().includes(term);
+            (typeLabel[o.role] || '').toLowerCase().includes(term)
+        );
     });
 
     return (
         <div>
-            <div className="page-header">
-                <div className="page-header-left">
-                    <h2>Organizations</h2>
-                    <p>View NCSSC, College Orgs, and Sub-Organization Accounts.</p>
-                </div>
-            </div>
+            <PageHeader title="Organizations" description="View NCSSC, College Orgs, and Sub-Organization Accounts." />
 
             <div style={{ marginBottom: 16 }}>
-                <div className="search-bar">
-                    <FiSearch size={16} />
-                    <input
-                        type="text"
-                        placeholder="Search by name, email, college, or type..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                    />
-                </div>
+                <SearchBar value={search} onChange={setSearch} placeholder="Search by name, email, college, or type..." />
             </div>
 
             <div className="table-container">
