@@ -24,3 +24,9 @@ def require_manager(profile=Depends(get_profile)):
     if profile["role"] == "student":
         raise HTTPException(status_code=403, detail="Insufficient permissions.")
     return profile
+
+def require_nvsu_email(user=Depends(get_current_user)):
+    email: str = user.email or ""
+    if not email.endswith("@nvsu.edu.ph"):
+        raise HTTPException(status_code=403, detail="Only @nvsu.edu.ph email addresses are allowed.")
+    return user

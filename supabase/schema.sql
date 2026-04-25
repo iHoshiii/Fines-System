@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS organizations (
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'student'
+  role TEXT NOT NULL DEFAULT 'student',
   student_id_number TEXT UNIQUE,
   pending_full_name TEXT,
   pending_student_id TEXT,
@@ -22,6 +22,21 @@ CREATE TABLE IF NOT EXISTS profiles (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 3. FINES TABLE
+CREATE TABLE IF NOT EXISTS fines (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
+  issued_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  amount NUMERIC(10,2) NOT NULL,
+  reason TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'unpaid' CHECK (status IN ('unpaid', 'paid')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE fines ENABLE ROW LEVEL SECURITY;
 
 -- 4. NOTIFICATIONS TABLE
 CREATE TABLE IF NOT EXISTS notifications (
@@ -62,11 +77,16 @@ CREATE OR REPLACE TRIGGER fines_updated_at
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, role)
+  INSERT INTO public.profiles (id, full_name, role, student_id_number, college, course, year_section, email)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'full_name', 'New User'),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'student')
+    COALESCE(NEW.raw_user_meta_data->>'role', 'student'),
+    NEW.raw_user_meta_data->>'student_id_number',
+    NEW.raw_user_meta_data->>'college',
+    NEW.raw_user_meta_data->>'course',
+    NEW.raw_user_meta_data->>'year_section',
+    NEW.email
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;

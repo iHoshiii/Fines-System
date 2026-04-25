@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/supabaseClient';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     FiAlertCircle,
     FiArrowRight,
@@ -28,6 +28,16 @@ export default function SettingsPage() {
     const [college, setCollege] = useState(profile?.college || '');
     const [course, setCourse] = useState(profile?.course || '');
     const [yearSection, setYearSection] = useState(profile?.year_section || '');
+
+    useEffect(() => {
+        if (profile) {
+            setFullName(profile.pending_full_name || profile.full_name || '');
+            setStudentId(profile.pending_student_id || profile.student_id_number || '');
+            setCollege(profile.college || '');
+            setCourse(profile.course || '');
+            setYearSection(profile.year_section || '');
+        }
+    }, [profile]);
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');

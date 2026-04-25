@@ -950,6 +950,14 @@ tbody tr:hover {
   margin-bottom: var(--space-xl);
 }
 
+.login-inner-wrapper {
+  padding: 32px 24px;
+}
+
+.login-page-content {
+  padding: 32px 24px;
+}
+
 .login-form {
   display: flex;
   flex-direction: column;
@@ -1273,4 +1281,253 @@ tbody tr:hover {
   background: var(--color-accent);
   flex-shrink: 0;
   margin-top: 6px;
+}
+
+/* ============================================================
+   MOBILE RESPONSIVE
+   ============================================================ */
+
+.mobile-menu-btn {
+  display: none;
+  position: fixed;
+  top: 68px;
+  left: 12px;
+  z-index: 400;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: left var(--transition-base);
+}
+
+.mobile-menu-btn.dashboard-btn {
+  top: 12px;
+}
+
+.mobile-menu-btn.sidebar-open {
+  left: calc(var(--sidebar-width) + 12px);
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 150;
+}
+
+.sidebar-overlay.open {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: flex;
+  }
+
+  #sidebar-close-btn {
+    display: flex !important;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+    z-index: 200;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* Prevent horizontal scroll on the whole page */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  .app-layout {
+    overflow-x: hidden;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .page-content {
+    padding: var(--space-md);
+    padding-top: 60px;
+    overflow-x: hidden;
+  }
+
+  /* Login page: full width content, no overflow */
+  .login-card {
+    width: 100% !important;
+    padding: var(--space-lg) !important;
+    box-sizing: border-box;
+  }
+
+  /* Login page content area padding */
+  .login-page-content {
+    padding: var(--space-md) !important;
+    padding-top: 72px !important;
+  }
+
+  .login-inner-wrapper {
+    padding: var(--space-md) !important;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .animated-header {
+    height: 56px !important;
+  }
+
+  /* Collapse all signup grids to single column */
+  .form-grid,
+  .signup-grid-2,
+  .signup-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Remember me / Forgot password: stack vertically with spacing */
+  .login-remember-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Tables: horizontal scroll only inside the wrapper, not the page */
+  .table-container {
+    overflow: hidden;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .table-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
+
+  /* Modals: full width, slide up from bottom */
+  .modal {
+    max-width: 100% !important;
+    width: 100%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    margin: 0;
+  }
+
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-body {
+    padding: var(--space-md);
+  }
+
+  .modal-footer {
+    padding: var(--space-sm) var(--space-md);
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .modal-footer .btn {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Page header: stack title and actions */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
+
+  .page-header .flex {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .page-header .flex .btn {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  /* Search bar full width */
+  .search-bar {
+    width: 100%;
+  }
+
+  .search-bar input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Filter row: wrap instead of overflow */
+  .flex-between.flex-wrap {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .flex-between.flex-wrap .flex {
+    flex-wrap: wrap;
+  }
+
+  /* Tabs: scrollable */
+  .tab-navigation {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+
+  .tab-button {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .btn-lg {
+    padding: 12px var(--space-md);
+    font-size: 15px;
+  }
+
+  .page-header-left h2 {
+    font-size: 20px;
+  }
+
+  th, td {
+    padding: 10px var(--space-sm);
+    font-size: 13px;
+  }
+
+  /* Login card inner padding tighter on very small screens */
+  .login-card {
+    padding: var(--space-md) !important;
+  }
+
+  /* Animated text smaller on small phones */
+  .animated-text {
+    font-size: 1.5rem !important;
+  }
 }
