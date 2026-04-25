@@ -6,7 +6,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { FiAlertCircle, FiEye, FiEyeOff, FiInfo, FiLock, FiMail, FiMenu, FiX } from 'react-icons/fi';
 
 export default function LoginPage() {
-    const { signIn, signUp, verifyOtp, user, loading } = useAuth();
+    const { signIn, signUp, sendSignUpOtp, verifyOtp, user, loading } = useAuth();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'how-to-use' | 'login' | 'signup'>('login');
     const [howToUseTab, setHowToUseTab] = useState<'Student' | 'Organization' | 'Admin'>('Student');
@@ -101,28 +101,19 @@ export default function LoginPage() {
             return;
         }
 
+        // Step 1: Just send OTP — do NOT create account yet
         setLoadingSignUp(true);
-        const { error } = await signUp({
-            email: signUpData.email,
-            password: signUpData.password,
-            fullName: `${signUpData.firstName} ${signUpData.middleName} ${signUpData.lastName}`.replace(/\s+/g, ' ').trim(),
-            studentId: signUpData.studentId,
-            college: signUpData.college,
-            course: signUpData.course,
-            year: signUpData.year,
-        });
+        const { error } = await sendSignUpOtp(signUpData.email);
         setLoadingSignUp(false);
 
         if (error) {
-            if (error.includes('already registered')) setError('An account with this email already exists');
-            else if (error.includes('restricted to @nvsu.edu.ph')) setError('Only @nvsu.edu.ph email addresses are allowed to register.');
-            else setError(error);
+            setError(error);
             return;
         }
 
         setPendingEmail(signUpData.email);
         setSignUpStep(2);
-        setSuccessMsg(`An 8-digit code was sent to ${signUpData.email}`);
+        setSuccessMsg(`An 8-digit verification code was sent to ${signUpData.email}`);
     };
 
     const handleVerifyOtp = async (e: React.FormEvent) => {
@@ -133,12 +124,33 @@ export default function LoginPage() {
             return;
         }
         setLoadingOtp(true);
-        const { error } = await verifyOtp(pendingEmail, otpCode);
-        setLoadingOtp(false);
-        if (error) {
+
+        // Step 2: Verify OTP first
+        const { error: otpError } = await verifyOtp(pendingEmail, otpCode);
+        if (otpError) {
+            setLoadingOtp(false);
             setError('Invalid or expired code. Please try again.');
             return;
         }
+
+        // Step 3: OTP confirmed — now create the account
+        const { error: signUpError } = await signUp({
+            email: signUpData.email,
+            password: signUpData.password,
+            fullName: `${signUpData.firstName} ${signUpData.middleName} ${signUpData.lastName}`.replace(/\s+/g, ' ').trim(),
+            studentId: signUpData.studentId,
+            college: signUpData.college,
+            course: signUpData.course,
+            year: signUpData.year,
+        });
+        setLoadingOtp(false);
+
+        if (signUpError) {
+            if (signUpError.includes('already registered')) setError('An account with this email already exists.');
+            else setError(signUpError);
+            return;
+        }
+
         router.replace('/dashboard');
     };
 

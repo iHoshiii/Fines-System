@@ -10,6 +10,7 @@ interface AuthContextType {
     profile: Profile | null;
     loading: boolean;
     signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+    sendSignUpOtp: (email: string) => Promise<{ error: string | null }>;
     signUp: (userData: {
         email: string;
         password: string;
@@ -70,6 +71,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: error ? error.message : null };
     };
 
+    const sendSignUpOtp = async (email: string) => {
+        const { error } = await supabase.auth.signInWithOtp({
+            email,
+            options: { shouldCreateUser: false }
+        });
+        // shouldCreateUser: false means it only sends OTP, does NOT create an account
+        // We ignore "user not found" errors since the user doesn't exist yet — that's expected
+        if (error && !error.message.includes('not found') && !error.message.includes('No user')) {
+            return { error: error.message };
+        }
+        return { error: null };
+    };
+
     const signUp = async (userData: {
         email: string;
         password: string;
@@ -97,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const verifyOtp = async (email: string, token: string) => {
-        const { error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' });
+        const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
         return { error: error ? error.message : null };
     };
 
@@ -106,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, verifyOtp, signOut, refreshProfile }}>
+        <AuthContext.Provider value={{ user, profile, loading, signIn, sendSignUpOtp, signUp, verifyOtp, signOut, refreshProfile }}>
             {children}
         </AuthContext.Provider>
     );
