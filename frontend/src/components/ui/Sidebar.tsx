@@ -121,7 +121,7 @@ export default function Sidebar() {
 
     return (
         <>
-            <button className="mobile-menu-btn" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+            <button className={`mobile-menu-btn dashboard-btn${mobileOpen ? ' sidebar-open' : ''}`} onClick={() => setMobileOpen(true)} aria-label="Open menu">
                 <FiMenu size={20} />
             </button>
 

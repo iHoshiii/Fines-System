@@ -189,7 +189,7 @@ export default function LoginPage() {
         }
             `}</style>
             {/* Mobile hamburger */}
-            <button className="mobile-menu-btn" onClick={() => setMobileSidebarOpen(true)} aria-label="Open menu">
+            <button className={`mobile-menu-btn${mobileSidebarOpen ? ' sidebar-open' : ''}`} onClick={() => setMobileSidebarOpen(true)} aria-label="Open menu">
                 <FiMenu size={20} />
             </button>
             <div className={`sidebar-overlay${mobileSidebarOpen ? ' open' : ''}`} onClick={() => setMobileSidebarOpen(false)} />
