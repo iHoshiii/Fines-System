@@ -3,13 +3,14 @@
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Fragment, useEffect, useState } from 'react';
-import { FiAlertCircle, FiEye, FiEyeOff, FiInfo, FiLock, FiMail } from 'react-icons/fi';
+import { FiAlertCircle, FiEye, FiEyeOff, FiInfo, FiLock, FiMail, FiMenu, FiX } from 'react-icons/fi';
 
 export default function LoginPage() {
     const { signIn, signUp, verifyOtp, user, loading } = useAuth();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'how-to-use' | 'login' | 'signup'>('login');
     const [howToUseTab, setHowToUseTab] = useState<'Student' | 'Organization' | 'Admin'>('Student');
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
     // Login state
     const [email, setEmail] = useState('');
@@ -187,17 +188,28 @@ export default function LoginPage() {
             line-height: 1;
         }
             `}</style>
+            {/* Mobile hamburger */}
+            <button className="mobile-menu-btn" onClick={() => setMobileSidebarOpen(true)} aria-label="Open menu">
+                <FiMenu size={20} />
+            </button>
+            <div className={`sidebar-overlay${mobileSidebarOpen ? ' open' : ''}`} onClick={() => setMobileSidebarOpen(false)} />
+
             {/* Green Sidebar */}
-            <aside className="sidebar">
+            <aside className={`sidebar${mobileSidebarOpen ? ' open' : ''}`}>
                 {/* Brand */}
-                <div className="sidebar-brand">
-                    <div className="sidebar-brand-logo" style={{ background: 'white', padding: 2 }}>
-                        <img src="/NVSUlogos/nvsu.png" alt="NVSU Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <div className="sidebar-brand" style={{ justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div className="sidebar-brand-logo" style={{ background: 'white', padding: 2 }}>
+                            <img src="/NVSUlogos/nvsu.png" alt="NVSU Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        </div>
+                        <div className="sidebar-brand-text">
+                            <h1>NVSU Fines</h1>
+                            <span>Management System</span>
+                        </div>
                     </div>
-                    <div className="sidebar-brand-text">
-                        <h1>NVSU Fines</h1>
-                        <span>Management System</span>
-                    </div>
+                    <button id="sidebar-close-btn" onClick={() => setMobileSidebarOpen(false)} style={{ display: 'none', background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: 4 }}>
+                        <FiX size={18} />
+                    </button>
                 </div>
 
                 {/* Tab Navigation */}
@@ -214,7 +226,7 @@ export default function LoginPage() {
                         return (
                             <Fragment key={tab}>
                             <button
-                                onClick={() => setActiveTab(tab)}
+                                onClick={() => { setActiveTab(tab); setMobileSidebarOpen(false); }}
                                 className={`sidebar-link ${isActive ? 'active' : ''}`}
                                 style={{
                                     width: '100%',
