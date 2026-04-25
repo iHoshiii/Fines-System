@@ -10,8 +10,10 @@ import {
     FiGrid,
     FiHome,
     FiLogOut,
+    FiMenu,
     FiSettings,
-    FiUsers
+    FiUsers,
+    FiX,
 } from 'react-icons/fi';
 
 interface NavItem {
@@ -86,12 +88,14 @@ export default function Sidebar() {
     const router = useRouter();
     const [pendingHref, setPendingHref] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
+    const [mobileOpen, setMobileOpen] = useState(false);
     const role = profile?.role;
 
     const allowedItems = useMemo(
         () => (role ? navItems.filter(item => item.roles.includes(role)) : []),
         [role]
     );
+
     const initials = profile?.full_name
         ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
         : '?';
@@ -108,66 +112,90 @@ export default function Sidebar() {
         });
     }, [allowedItems, router]);
 
+    // Close sidebar on route change
+    useEffect(() => {
+        setMobileOpen(false);
+    }, [pathname]);
+
     if (!profile) return null;
 
     return (
-        <aside className="sidebar">
-            {/* Brand */}
-            <div className="sidebar-brand">
-                <div className="sidebar-brand-logo">N</div>
-                <div className="sidebar-brand-text">
-                    <h1>NVSU Fines</h1>
-                    <span>Management System</span>
-                </div>
-            </div>
+        <>
+            <button className="mobile-menu-btn" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+                <FiMenu size={20} />
+            </button>
 
-            {/* Navigation */}
-            <nav className="sidebar-nav">
-                <div className="sidebar-section-label">Navigation</div>
-                {allowedItems.map((item) => {
-                    const isActive = pathname === item.href ||
-                        (item.href !== '/dashboard' && pathname.startsWith(item.href));
-                    const isNavigating = isPending && pendingHref === item.href;
-                    return (
-                        <Link
-                            key={`${item.href}-${item.label}`}
-                            href={item.href}
-                            onClick={(e) => {
-                                if (pathname === item.href) return;
-                                e.preventDefault();
-                                setPendingHref(item.href);
-                                startTransition(() => {
-                                    router.push(item.href);
-                                });
-                            }}
-                            aria-busy={isNavigating}
-                            className={`sidebar-link ${(isActive || isNavigating) ? 'active' : ''}`}
-                        >
-                            {item.icon}
-                            {item.label}
-                        </Link>
-                    );
-                })}
-            </nav>
+            <div className={`sidebar-overlay${mobileOpen ? ' open' : ''}`} onClick={() => setMobileOpen(false)} />
 
-            {/* User Footer */}
-            <div className="sidebar-footer">
-                <div className="sidebar-user">
-                    <div className="sidebar-user-avatar">{initials}</div>
-                    <div className="sidebar-user-info">
-                        <p>{profile.full_name}</p>
-                        <span>{roleLabel[profile.role]}</span>
+            <aside className={`sidebar${mobileOpen ? ' open' : ''}`}>
+                {/* Brand */}
+                <div className="sidebar-brand" style={{ justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                        <div className="sidebar-brand-logo">N</div>
+                        <div className="sidebar-brand-text">
+                            <h1>NVSU Fines</h1>
+                            <span>Management System</span>
+                        </div>
                     </div>
                     <button
+                        id="sidebar-close-btn"
                         className="sidebar-logout-btn"
-                        onClick={signOut}
-                        title="Sign Out"
-                        id="sidebar-logout-btn"
+                        onClick={() => setMobileOpen(false)}
+                        aria-label="Close menu"
+                        style={{ display: 'none' }}
                     >
-                        <FiLogOut size={16} />
+                        <FiX size={18} />
                     </button>
                 </div>
-            </div>
-        </aside>
+
+                {/* Navigation */}
+                <nav className="sidebar-nav">
+                    <div className="sidebar-section-label">Navigation</div>
+                    {allowedItems.map((item) => {
+                        const isActive = pathname === item.href ||
+                            (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                        const isNavigating = isPending && pendingHref === item.href;
+                        return (
+                            <Link
+                                key={`${item.href}-${item.label}`}
+                                href={item.href}
+                                onClick={(e) => {
+                                    if (pathname === item.href) return;
+                                    e.preventDefault();
+                                    setPendingHref(item.href);
+                                    startTransition(() => {
+                                        router.push(item.href);
+                                    });
+                                }}
+                                aria-busy={isNavigating}
+                                className={`sidebar-link ${(isActive || isNavigating) ? 'active' : ''}`}
+                            >
+                                {item.icon}
+                                {item.label}
+                            </Link>
+                        );
+                    })}
+                </nav>
+
+                {/* User Footer */}
+                <div className="sidebar-footer">
+                    <div className="sidebar-user">
+                        <div className="sidebar-user-avatar">{initials}</div>
+                        <div className="sidebar-user-info">
+                            <p>{profile.full_name}</p>
+                            <span>{roleLabel[profile.role]}</span>
+                        </div>
+                        <button
+                            className="sidebar-logout-btn"
+                            onClick={signOut}
+                            title="Sign Out"
+                            id="sidebar-logout-btn"
+                        >
+                            <FiLogOut size={16} />
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </>
     );
 }
