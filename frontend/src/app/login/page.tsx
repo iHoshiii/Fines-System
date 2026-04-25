@@ -204,12 +204,12 @@ export default function LoginPage() {
                 </div>
             </aside>
 
+            <button className={`mobile-menu-btn${mobileSidebarOpen ? ' sidebar-open' : ''}`} onClick={() => setMobileSidebarOpen(true)} aria-label="Open menu">
+                <FiMenu size={20} />
+            </button>
+
             <main className="main-content" style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
                 <div className="animated-header">
-                    <button className="mobile-menu-btn" onClick={() => setMobileSidebarOpen(true)} aria-label="Open menu"
-                        style={{ flexShrink: 0, marginLeft: 12, marginRight: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#006837', display: 'flex', alignItems: 'center', padding: 6, borderRadius: 6 }}>
-                        <FiMenu size={24} />
-                    </button>
                     <div className="marquee-wrapper">
                         <div className="animated-text">Nueva Vizcaya State University &nbsp;&nbsp;&nbsp;&nbsp;</div>
                         <div className="animated-text">Nueva Vizcaya State University &nbsp;&nbsp;&nbsp;&nbsp;</div>
