@@ -19,7 +19,7 @@ export default function LoginPage() {
 
     // Sign up state — Step 1
     const [signUpData, setSignUpData] = useState({
-        email: '', firstName: '', middleName: '', lastName: '',
+        email: '', studentId: '', firstName: '', middleName: '', lastName: '',
         college: '', course: '', year: '', password: '', confirmPassword: ''
     });
     const [showSignUpPassword, setShowSignUpPassword] = useState(false);
@@ -81,7 +81,7 @@ export default function LoginPage() {
         e.preventDefault();
         setError(null);
 
-        if (!signUpData.email.trim() || !signUpData.firstName.trim() || !signUpData.lastName.trim() ||
+        if (!signUpData.email.trim() || !signUpData.studentId.trim() || !signUpData.firstName.trim() || !signUpData.lastName.trim() ||
             !signUpData.college.trim() || !signUpData.course.trim() ||
             !signUpData.year.trim() || !signUpData.password.trim()) {
             setError('All fields are required');
@@ -105,7 +105,7 @@ export default function LoginPage() {
             email: signUpData.email,
             password: signUpData.password,
             fullName: `${signUpData.firstName} ${signUpData.middleName} ${signUpData.lastName}`.replace(/\s+/g, ' ').trim(),
-            studentId: '',
+            studentId: signUpData.studentId,
             college: signUpData.college,
             course: signUpData.course,
             year: signUpData.year,
@@ -430,24 +430,38 @@ export default function LoginPage() {
                         </div>
 
                         <form className="login-form" onSubmit={handleSignUp}>
-                            <div className="form-group">
-                                <label className="form-label" htmlFor="signup-email">Email Address</label>
-                                <div style={{ position: 'relative' }}>
-                                    <FiMail size={16} style={{
-                                        position: 'absolute', left: 14, top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        color: 'var(--color-text-muted)', pointerEvents: 'none'
-                                    }} />
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div className="form-group">
+                                    <label className="form-label" htmlFor="signup-email">Email Address</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <FiMail size={16} style={{
+                                            position: 'absolute', left: 14, top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            color: 'var(--color-text-muted)', pointerEvents: 'none'
+                                        }} />
+                                        <input
+                                            id="signup-email"
+                                            type="email"
+                                            className="form-control"
+                                            placeholder="you@nvsu.edu.ph"
+                                            value={signUpData.email}
+                                            onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
+                                            required
+                                            style={{ paddingLeft: 40 }}
+                                            autoComplete="email"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label" htmlFor="studentId">Student ID</label>
                                     <input
-                                        id="signup-email"
-                                        type="email"
+                                        id="studentId"
+                                        type="text"
                                         className="form-control"
-                                        placeholder="you@nvsu.edu.ph"
-                                        value={signUpData.email}
-                                        onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
+                                        placeholder="e.g., 2021-00123"
+                                        value={signUpData.studentId}
+                                        onChange={(e) => setSignUpData({ ...signUpData, studentId: e.target.value })}
                                         required
-                                        style={{ paddingLeft: 40 }}
-                                        autoComplete="email"
                                     />
                                 </div>
                             </div>
