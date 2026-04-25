@@ -292,10 +292,10 @@ export default function LoginPage() {
                         <div className="animated-text">Nueva Vizcaya State University &nbsp;&nbsp;&nbsp;&nbsp;</div>
                     </div>
                 </div>
-                <div className="page-content" style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, backgroundImage: 'url(/NVSUlogos/nvsu2.jpg)', backgroundRepeat: 'no-repeat', backgroundSize: '100% 100%', backgroundPosition: 'center', position: 'relative' }}>
+                <div className="page-content login-page-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, backgroundImage: 'url(/NVSUlogos/nvsu2.jpg)', backgroundRepeat: 'no-repeat', backgroundSize: '100% 100%', backgroundPosition: 'center', position: 'relative' }}>
                     <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0, 104, 55, 0.65)', pointerEvents: 'none' }}></div>
 
-                    <div style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 24px' }}>
+                    <div className="login-inner-wrapper" style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     {error && (
                         <div className="alert alert-error" style={{ marginBottom: 24, maxWidth: '600px', margin: '0 auto 24px' }}>
                             <FiAlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
@@ -398,7 +398,7 @@ export default function LoginPage() {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }} className="login-remember-row">
                                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
                                     <input
                                         type="checkbox"
